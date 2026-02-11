@@ -1,0 +1,47 @@
+2025-01-15 Grocery Store
+    expenses:groceries                $45.32
+    assets:checking                  -$45.32
+
+2025-01-16 Salary Payment
+    assets:checking                $2000.00
+    income:salary                 -$2000.00
+
+2025-01-18 Electric Bill
+    expenses:utilities                $89.50
+    assets:checking                  -$89.50
+
+2025-01-20 Coffee Shop
+    expenses:dining                   $5.75
+    assets:checking                   -$5.75
+
+2025-01-22 Gas Station
+    expenses:transport                $42.00
+    assets:checking                  -$42.00
+
+2025-01-25 Netflix Subscription
+    expenses:entertainment            $15.99
+    assets:checking                  -$15.99
+
+2025-01-28 Rent Payment
+    expenses:housing               $1200.00
+    assets:checking               -$1200.00
+
+2025-01-30 Freelance Income
+    assets:checking                 $500.00
+    income:freelance               -$500.00
+
+2025-02-01 Restaurant Dinner
+    expenses:dining                   $67.85
+    assets:checking                  -$67.85
+
+2025-02-03 Bookstore Purchase
+    expenses:books                    $28.99
+    assets:checking                  -$28.99
+
+2025-02-05 Health Insurance
+    expenses:insurance               $225.00
+    assets:checking                 -$225.00
+
+2025-02-08 Movie Theater
+    expenses:entertainment            $18.50
+    assets:checking                  -$18.50
