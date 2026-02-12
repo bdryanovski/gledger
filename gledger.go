@@ -3,30 +3,26 @@ package main
 import "fmt"
 import "os"
 
-import "gledger/parser"
+import "gledger/interpreter"
 
 func main() {
-	data, err := os.ReadFile("./example/transactions.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
+
+	interpreter := Interpreter.NewInterpreter()
+	error := interpreter.LoadFromFile("./example/transactions.txt")
+
+	if error != nil {
+		fmt.Fprintf(os.Stderr, "Error loading transactions: %v\n", error)
 		os.Exit(1)
 	}
 
-	txns, err := Parser.ParseTransactions(string(data))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Parse error: %v\n", err)
-		os.Exit(1)
+	fmt.Printf("Loaded transactions from file\n")
+
+	fmt.Printf("Calculating balances...\n")
+	balances := interpreter.CalculateBalances()
+
+	fmt.Printf("Account balances:\n")
+	for account, balance := range balances {
+		fmt.Printf("  %-30s %f\n", account, balance)
 	}
 
-	fmt.Printf("Parsed %d transactions\n", len(txns))
-
-	for i, txn := range txns {
-		fmt.Printf("\n--- Transaction %d ---\n", i+1)
-		fmt.Printf("  Date:        %s\n", txn.Date.Format("2006-01-02"))
-		fmt.Printf("  Description: %s\n", txn.Description)
-		fmt.Printf("  Balanced:    %v\n", txn.IsBalanced())
-		for _, p := range txn.Postings {
-			fmt.Printf("    %-30s %s\n", p.Account, p.Amount.String())
-		}
-	}
 }
