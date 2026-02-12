@@ -6,6 +6,7 @@ import (
 	"gledger/plugin"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -65,4 +66,56 @@ func (interpreter *Interpreter) CalculateBalances() map[string]float64 {
 		}
 	}
 	return balances
+}
+
+func (interpreter *Interpreter) GenerateBalanceReport() string {
+	balances := interpreter.CalculateBalances()
+
+	// Group by account type (first part before colon)
+	groups := make(map[string]map[string]float64)
+
+	for account, balance := range balances {
+		parts := strings.Split(account, ":")
+		accountType := parts[0]
+
+		if groups[accountType] == nil {
+			groups[accountType] = make(map[string]float64)
+		}
+		groups[accountType][account] = balance
+	}
+
+	var report strings.Builder
+	report.WriteString("BALANCE REPORT\n")
+	report.WriteString("══════════════════════════════════════════════\n\n")
+
+	// Define order for account types
+	order := []string{"assets", "liabilities", "equity", "income", "expenses"}
+
+	for _, accountType := range order {
+		accounts := groups[accountType]
+		if len(accounts) == 0 {
+			continue
+		}
+
+		report.WriteString(fmt.Sprintf("%s:\n", strings.ToUpper(accountType)))
+
+		// Sort accounts within group
+		var names []string
+		for name := range accounts {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+
+		total := 0.0
+		for _, name := range names {
+			balance := accounts[name]
+			total += balance
+			report.WriteString(fmt.Sprintf("  %-40s %10.2f\n", name, balance))
+		}
+
+		report.WriteString(fmt.Sprintf("  %-40s %10.2f\n", "Total", total))
+		report.WriteString("\n")
+	}
+
+	return report.String()
 }

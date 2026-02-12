@@ -25,4 +25,6 @@ func main() {
 		fmt.Printf("  %-30s %f\n", account, balance)
 	}
 
+	fmt.Print(interpreter.GenerateBalanceReport())
+
 }
