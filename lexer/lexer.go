@@ -148,7 +148,7 @@ func (lexer *Lexer) NextToken() AST.Token {
 
 	// random things ...
 
-	if character != 'n' && character != 0 {
+	if character != '\n' && character != 0 {
 		value := ""
 		for lexer.peek() != '\n' && lexer.peek() != 0 && lexer.peek() != '$' {
 			if lexer.peek() == ' ' {

@@ -12,7 +12,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	txns, err := parser.ParseTransactions(string(data))
+	txns, err := Parser.ParseTransactions(string(data))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Parse error: %v\n", err)
 		os.Exit(1)
