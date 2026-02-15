@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"gledger/ast"
 	"gledger/lexer"
-	"strconv"
-	"strings"
+	"gledger/utils"
 	"time"
 )
 
@@ -13,46 +12,6 @@ type Parser struct {
 	lexer   *lexer.Lexer
 	current AST.Token // current token
 	peek    AST.Token // next token
-}
-
-type Amount struct {
-	Value    float64
-	Currency string
-}
-
-// Too lazy to do it right now, we will do it later
-func (amount *Amount) String() string {
-	if amount.Value < 0 {
-		return fmt.Sprintf("-$%.2f", -amount.Value)
-	}
-	return fmt.Sprintf("$%.2f", amount.Value)
-}
-
-type Posting struct {
-	Account string
-	Amount  Amount
-}
-
-type Transaction struct {
-	Date        time.Time
-	Description string
-	Postings    []Posting
-}
-
-// Calculate the balance of a transaction by summing up the amounts of its postings
-func (transaction *Transaction) Balance() float64 {
-	balance := 0.0
-	for _, posting := range transaction.Postings {
-		balance += posting.Amount.Value
-	}
-	return balance
-}
-
-// Debug safety check
-func (transaction *Transaction) IsBalanced() bool {
-	balance := transaction.Balance()
-	// floating points are failing me sometimes
-	return balance > -0.01 && balance < 0.01
 }
 
 func runParser(input string) *Parser {
@@ -76,8 +35,8 @@ func (parser *Parser) skipNewLines() {
 	}
 }
 
-func (parser *Parser) Parse() ([]*Transaction, error) {
-	var transactions []*Transaction
+func (parser *Parser) Parse() ([]*AST.Transaction, error) {
+	var transactions []*AST.Transaction
 
 	parser.skipNewLines()
 	for parser.current.Type != AST.TOKEN_EOF {
@@ -96,7 +55,7 @@ func (parser *Parser) Parse() ([]*Transaction, error) {
 	return transactions, nil
 }
 
-func (parser *Parser) parserTransaction() (*Transaction, error) {
+func (parser *Parser) parserTransaction() (*AST.Transaction, error) {
 	if parser.current.Type != AST.TOKEN_DATE {
 		return nil, fmt.Errorf("Expected date at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
@@ -127,7 +86,7 @@ func (parser *Parser) parserTransaction() (*Transaction, error) {
 	}
 	parser.nextToken()
 
-	postings := []Posting{}
+	postings := []AST.Posting{}
 
 	for parser.current.Type == AST.TOKEN_INDENT {
 		posting, err := parser.parsePosting()
@@ -142,7 +101,7 @@ func (parser *Parser) parserTransaction() (*Transaction, error) {
 		return nil, fmt.Errorf("Transaction must have at least two posting at line %d", parser.current.Line)
 	}
 
-	currentTransaction := &Transaction{
+	currentTransaction := &AST.Transaction{
 		Date:        date,
 		Description: description,
 		Postings:    postings,
@@ -155,56 +114,42 @@ func (parser *Parser) parserTransaction() (*Transaction, error) {
 	return currentTransaction, nil
 }
 
-func (parser *Parser) parsePosting() (Posting, error) {
+func (parser *Parser) parsePosting() (AST.Posting, error) {
 	if parser.current.Type != AST.TOKEN_INDENT {
-		return Posting{}, fmt.Errorf("Expected indent at line %d, got %s", parser.current.Line, parser.current.Value)
+		return AST.Posting{}, fmt.Errorf("Expected indent at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_ACCOUNT {
-		return Posting{}, fmt.Errorf("Expected account at line %d, got %s", parser.current.Line, parser.current.Value)
+		return AST.Posting{}, fmt.Errorf("Expected account at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
 	account := parser.current.Value
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_AMOUNT {
-		return Posting{}, fmt.Errorf("Expected amount at line %d, got %s", parser.current.Line, parser.current.Value)
+		return AST.Posting{}, fmt.Errorf("Expected amount at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
-	amount, err := parserAmount(parser.current.Value)
+	amount, err := utils.ParseAmount(parser.current.Value)
 	if err != nil {
-		return Posting{}, fmt.Errorf("Invalid amount format at line %d: %v", parser.current.Line, err)
+		return AST.Posting{}, fmt.Errorf("Invalid amount format at line %d: %v", parser.current.Line, err)
 	}
 
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_NEWLINE {
-		return Posting{}, fmt.Errorf("Expected newline after posting at line %d", parser.current.Line)
+		return AST.Posting{}, fmt.Errorf("Expected newline after posting at line %d", parser.current.Line)
 	}
 	parser.nextToken()
 
-	return Posting{Account: account, Amount: amount}, nil
-}
-
-// Helper function to parse amount string into Amount struct
-func parserAmount(amountStr string) (Amount, error) {
-	amount := strings.TrimSpace(amountStr)
-	amount = strings.ReplaceAll(amount, "$", "")
-	value, err := strconv.ParseFloat(amount, 64)
-	if err != nil {
-		return Amount{}, err
-	}
-
-	// Extend it for more currencies
-	return Amount{Value: value, Currency: "USD"}, nil
-
+	return AST.Posting{Account: account, Amount: amount}, nil
 }
 
 // parseTransactions takes raw ledger text and returns parsed transactions.
 // This is the testable core logic, separated from main().
-func ParseTransactions(input string) ([]*Transaction, error) {
+func ParseTransactions(input string) ([]*AST.Transaction, error) {
 	parser := runParser(input)
 	return parser.Parse()
 }

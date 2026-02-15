@@ -2,15 +2,15 @@ package Plugin
 
 import (
 	"fmt"
-	"gledger/parser"
+	"gledger/ast"
 )
 
 type Plugin interface {
 	Name() string
-	OnParse(transaction *Parser.Transaction) error
-	OnAdd(transaction *Parser.Transaction) error
-	OnFilter(transaction []*Parser.Transaction) []*Parser.Transaction
-	OnReport(transaction []*Parser.Transaction) string
+	OnParse(transaction *AST.Transaction) error
+	OnAdd(transaction *AST.Transaction) error
+	OnFilter(transaction []*AST.Transaction) []*AST.Transaction
+	OnReport(transaction []*AST.Transaction) string
 }
 
 type PluginManager struct {
@@ -23,12 +23,12 @@ func NewPluginManager() *PluginManager {
 	}
 }
 
-func (pluginmanager *PluginManager) Register(plugin Plugin) {
-	pluginmanager.plugins = append(pluginmanager.plugins, plugin)
+func (pm *PluginManager) Register(plugin Plugin) {
+	pm.plugins = append(pm.plugins, plugin)
 }
 
-func (pluginmanager *PluginManager) ExecuteOnParse(transaction *Parser.Transaction) error {
-	for _, plugin := range pluginmanager.plugins {
+func (pm *PluginManager) ExecuteOnParse(transaction *AST.Transaction) error {
+	for _, plugin := range pm.plugins {
 		if err := plugin.OnParse(transaction); err != nil {
 			return fmt.Errorf("Plugin %s OnParse error: %v", plugin.Name(), err)
 		}
@@ -36,8 +36,8 @@ func (pluginmanager *PluginManager) ExecuteOnParse(transaction *Parser.Transacti
 	return nil
 }
 
-func (pluginmanager *PluginManager) ExecuteOnAdd(transaction *Parser.Transaction) error {
-	for _, plugin := range pluginmanager.plugins {
+func (pm *PluginManager) ExecuteOnAdd(transaction *AST.Transaction) error {
+	for _, plugin := range pm.plugins {
 		if err := plugin.OnAdd(transaction); err != nil {
 			return fmt.Errorf("Plugin %s OnAdd error: %v", plugin.Name(), err)
 		}
@@ -45,17 +45,17 @@ func (pluginmanager *PluginManager) ExecuteOnAdd(transaction *Parser.Transaction
 	return nil
 }
 
-func (pluginmanager *PluginManager) ExecuteOnFilter(transactions []*Parser.Transaction) []*Parser.Transaction {
+func (pm *PluginManager) ExecuteOnFilter(transactions []*AST.Transaction) []*AST.Transaction {
 	result := transactions
-	for _, plugin := range pluginmanager.plugins {
+	for _, plugin := range pm.plugins {
 		result = plugin.OnFilter(result)
 	}
 	return result
 }
 
-func (pluginmanager *PluginManager) ExecuteOnReport(transactions []*Parser.Transaction) []string {
+func (pm *PluginManager) ExecuteOnReport(transactions []*AST.Transaction) []string {
 	var reports []string
-	for _, plugin := range pluginmanager.plugins {
+	for _, plugin := range pm.plugins {
 		report := plugin.OnReport(transactions)
 		if report != "" {
 			reports = append(reports, report)

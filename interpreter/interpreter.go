@@ -2,6 +2,7 @@ package Interpreter
 
 import (
 	"fmt"
+	"gledger/ast"
 	"gledger/parser"
 	"gledger/plugin"
 	"os"
@@ -11,13 +12,13 @@ import (
 )
 
 type Interpreter struct {
-	transactions []*Parser.Transaction
+	transactions []*AST.Transaction
 	plugins      *Plugin.PluginManager
 }
 
 func NewInterpreter() *Interpreter {
 	interpreter := &Interpreter{
-		transactions: []*Parser.Transaction{},
+		transactions: []*AST.Transaction{},
 		plugins:      Plugin.NewPluginManager(),
 	}
 	/**
@@ -118,4 +119,26 @@ func (interpreter *Interpreter) GenerateBalanceReport() string {
 	}
 
 	return report.String()
+}
+
+func (interpreter *Interpreter) GetTransactions() []*AST.Transaction {
+	return interpreter.transactions
+}
+
+func (interpreter *Interpreter) AddTransaction(transaction *AST.Transaction) error {
+	if !transaction.IsBalanced() {
+		return fmt.Errorf("Transaction is not balanced: sum is %.2f", transaction.Balance())
+	}
+
+	if err := interpreter.plugins.ExecuteOnAdd(transaction); err != nil {
+		return fmt.Errorf("Plugin OnAdd error: %v", err)
+	}
+
+	interpreter.transactions = append(interpreter.transactions, transaction)
+
+	sort.Slice(interpreter.transactions, func(i, j int) bool {
+		return interpreter.transactions[i].Date.Before(interpreter.transactions[j].Date)
+	})
+
+	return nil
 }

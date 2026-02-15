@@ -3,28 +3,23 @@ package main
 import "fmt"
 import "os"
 
-import "gledger/interpreter"
+import "gledger/ui"
+import tea "github.com/charmbracelet/bubbletea"
 
 func main() {
 
-	interpreter := Interpreter.NewInterpreter()
-	error := interpreter.LoadFromFile("./example/transactions.txt")
+	m, err := UI.InitialModel()
 
-	if error != nil {
-		fmt.Fprintf(os.Stderr, "Error loading transactions: %v\n", error)
+	if err != nil {
+		fmt.Printf("Error initializing model: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Loaded transactions from file\n")
+	program := tea.NewProgram(m, tea.WithAltScreen())
 
-	fmt.Printf("Calculating balances...\n")
-	balances := interpreter.CalculateBalances()
-
-	fmt.Printf("Account balances:\n")
-	for account, balance := range balances {
-		fmt.Printf("  %-30s %f\n", account, balance)
+	if _, err := program.Run(); err != nil {
+		fmt.Printf("Error running program: %v\n", err)
+		os.Exit(1)
 	}
-
-	fmt.Print(interpreter.GenerateBalanceReport())
 
 }
