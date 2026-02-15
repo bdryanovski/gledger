@@ -398,11 +398,11 @@ func (m Model) viewReport() string {
 	s.WriteString(report)
 
 	// Plugin reportss
-	// pluginReports := m.interpreter.plugins.ExecuteOnReport(m.interpreter.GetTransactions())
-	// for _, report := range pluginReports {
-	// 	s.WriteString("\n")
-	// 	s.WriteString(report)
-	// }
+	pluginReports := m.interpreter.GetPluginReports()
+	for _, report := range pluginReports {
+		s.WriteString("\n")
+		s.WriteString(report)
+	}
 
 	s.WriteString("\nCommands: [esc]back\n")
 

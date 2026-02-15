@@ -1,7 +1,9 @@
 package lexer
 
-import "strings"
-import "gledger/ast"
+import (
+	AST "gledger/ast"
+	"strings"
+)
 
 type Lexer struct {
 	input      string

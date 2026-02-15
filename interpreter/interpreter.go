@@ -6,6 +6,7 @@ import (
 	"gledger/config"
 	Parser "gledger/parser"
 	Plugin "gledger/plugin"
+	TemplatePlugin "gledger/plugin/extentions"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,8 +28,7 @@ func NewInterpreter(config *config.Config) *Interpreter {
 	/**
 	* should register plugins here
 	 */
-
-	// interpreter.plugins.Register()
+	interpreter.plugins.Register(TemplatePlugin.NewTemplatePlugin())
 
 	return interpreter
 }
@@ -158,6 +158,10 @@ func (interpreter *Interpreter) GenerateBalanceReport() string {
 	}
 
 	return report.String()
+}
+
+func (interpreter *Interpreter) GetPluginReports() []string {
+	return interpreter.plugins.ExecuteOnReport(interpreter.transactions)
 }
 
 func (interpreter *Interpreter) GetTransactions() []*AST.Transaction {
