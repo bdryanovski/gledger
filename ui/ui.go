@@ -3,7 +3,8 @@ package UI
 import (
 	"fmt"
 	AST "gledger/ast"
-	"gledger/interpreter"
+	"gledger/config"
+	Interpreter "gledger/interpreter"
 	"gledger/utils"
 	"strings"
 	"time"
@@ -26,6 +27,7 @@ const (
 
 type Model struct {
 	interpreter *Interpreter.Interpreter
+	config      *config.Config
 	currentView ViewMode
 	table       table.Model
 	formInputs  []textinput.Model
@@ -35,9 +37,14 @@ type Model struct {
 }
 
 func InitialModel() (Model, error) {
-	interpreter := Interpreter.NewInterpreter()
+	config, err := config.LoadConfig()
+	if err != nil {
+		return Model{}, fmt.Errorf("Error loading config: %v", err)
+	}
 
-	if err := interpreter.LoadFromFile("./../example/transactions.txt"); err != nil {
+	interpreter := Interpreter.NewInterpreter(config)
+
+	if err := interpreter.LoadFromFile(config.DataFile); err != nil {
 		fmt.Printf("Error loading transactions: %v\n", err)
 	}
 
@@ -99,6 +106,7 @@ func InitialModel() (Model, error) {
 
 	m := Model{
 		interpreter: interpreter,
+		config:      config,
 		currentView: VIEW_LIST,
 		table:       t,
 		formInputs:  inputs,
@@ -122,6 +130,13 @@ func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+			/**
+			* Save before you go go go
+			 */
+			if err := model.interpreter.SaveToFile(model.config.DataFile); err != nil {
+				fmt.Printf("Error saving transactions: %v\n", err)
+				model.err = err
+			}
 			return model, tea.Quit
 		case "?":
 			model.currentView = VIEW_HELP
@@ -271,6 +286,10 @@ func (m *Model) submitTransaction() error {
 		return err
 	}
 
+	if err := m.interpreter.SaveToFile(m.config.DataFile); err != nil {
+		return fmt.Errorf("Error saving transactions: %v", err)
+	}
+
 	return nil
 }
 
@@ -302,7 +321,7 @@ func (m Model) View() string {
 		Background(lipgloss.Color("#1a1a1a")).
 		Padding(0, 1)
 
-	s.WriteString(headerStyle.Render("FinTrack - Financial Management TUI"))
+	s.WriteString(headerStyle.Render("GLedger"))
 	s.WriteString("\n\n")
 
 	// Show any messages

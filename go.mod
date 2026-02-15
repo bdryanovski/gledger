@@ -29,6 +29,7 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
+	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1

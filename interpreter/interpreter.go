@@ -2,9 +2,10 @@ package Interpreter
 
 import (
 	"fmt"
-	"gledger/ast"
-	"gledger/parser"
-	"gledger/plugin"
+	AST "gledger/ast"
+	"gledger/config"
+	Parser "gledger/parser"
+	Plugin "gledger/plugin"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,12 +15,14 @@ import (
 type Interpreter struct {
 	transactions []*AST.Transaction
 	plugins      *Plugin.PluginManager
+	config       *config.Config
 }
 
-func NewInterpreter() *Interpreter {
+func NewInterpreter(config *config.Config) *Interpreter {
 	interpreter := &Interpreter{
 		transactions: []*AST.Transaction{},
 		plugins:      Plugin.NewPluginManager(),
+		config:       config,
 	}
 	/**
 	* should register plugins here
@@ -57,6 +60,42 @@ func (interpreter *Interpreter) LoadFromFile(filename string) error {
 
 	interpreter.transactions = transactions
 	return nil
+}
+
+func (interpreter *Interpreter) SaveToFile(filename string) error {
+	if strings.HasPrefix(filename, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("Error getting home directory: %v", err)
+		}
+		filename = filepath.Join(home, filename[2:])
+	}
+
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("Error creating directories: %v", err)
+	}
+
+	var output strings.Builder
+	for i, transaction := range interpreter.transactions {
+		if i > 0 {
+			output.WriteString("\n")
+		}
+		output.WriteString(interpreter.formatTransaction(transaction))
+	}
+
+	return os.WriteFile(filename, []byte(output.String()), 0644)
+}
+
+func (interpreter *Interpreter) formatTransaction(transaction *AST.Transaction) string {
+	var formatted strings.Builder
+
+	formatted.WriteString(fmt.Sprintf("%s %s\n", transaction.Date.Format("2006-01-02"), transaction.Description))
+	for _, posting := range transaction.Postings {
+		formatted.WriteString(fmt.Sprintf("  %-40s %10.2f\n", posting.Account, posting.Amount.Value))
+	}
+
+	return formatted.String()
 }
 
 func (interpreter *Interpreter) CalculateBalances() map[string]float64 {
