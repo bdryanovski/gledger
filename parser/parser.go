@@ -2,7 +2,7 @@ package Parser
 
 import (
 	"fmt"
-	"gledger/ast"
+	AST "gledger/ast"
 	"gledger/lexer"
 	"gledger/utils"
 	"time"

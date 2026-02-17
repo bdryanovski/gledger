@@ -20,6 +20,7 @@ const (
 	TOKEN_NEWLINE                  // \n
 	TOKEN_INDENT                   // Indentation (for nested transactions)
 	TOKEN_ERROR                    // Error token
+	TOKEN_COMMENT                  // Comment (ignored by the parser)
 )
 
 /**

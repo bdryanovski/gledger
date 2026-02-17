@@ -18,6 +18,7 @@
     expenses:transport                $42.00
     assets:checking                  -$42.00
 
+; This is a comment
 2025-01-25 Netflix Subscription
     expenses:entertainment            $15.99
     assets:checking                  -$15.99

@@ -81,6 +81,15 @@ func (lexer *Lexer) NextToken() AST.Token {
 		return AST.Token{Type: AST.TOKEN_NEWLINE, Value: "\n", Line: lexer.line - 1, Column: lexer.lastColumn}
 	}
 
+	// Comments
+	if character == ';' {
+		comment := ""
+		for lexer.peek() != '\n' && lexer.peek() != 0 {
+			comment += string(lexer.advance())
+		}
+		return AST.Token{Type: AST.TOKEN_COMMENT, Value: comment, Line: lexer.line, Column: lexer.lastColumn}
+	}
+
 	// Identation
 	if lexer.column == 0 && (character == ' ' || character == '\t') {
 		indent := ""
