@@ -83,11 +83,11 @@ func (lexer *Lexer) NextToken() AST.Token {
 
 	// Comments
 	if character == ';' {
-		comment := ""
+		var comment strings.Builder
 		for lexer.peek() != '\n' && lexer.peek() != 0 {
-			comment += string(lexer.advance())
+			comment.WriteString(string(lexer.advance()))
 		}
-		return AST.Token{Type: AST.TOKEN_COMMENT, Value: comment, Line: lexer.line, Column: lexer.lastColumn}
+		return AST.Token{Type: AST.TOKEN_COMMENT, Value: comment.String(), Line: lexer.line, Column: lexer.lastColumn}
 	}
 
 	// Identation
