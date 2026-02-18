@@ -1,7 +1,9 @@
 package utils
 
 import (
-	"gledger/ast"
+	AST "gledger/ast"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -22,4 +24,15 @@ func ParseAmount(s string) (AST.Amount, error) {
 		Value:    value,
 		Currency: "USD",
 	}, nil
+}
+
+func ExpandHome(path string) string {
+	if strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return filepath.Join(home, path[2:])
+	}
+	return path
 }
