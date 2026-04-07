@@ -1,0 +1,47 @@
+{
+  "name": "sample-bulgarian-bank",
+  "delimiter": "|",
+  "encoding": "utf-8",
+  "skip_lines": 1,
+  "date_format": "02/01/2006",
+  "time_column": 1,
+  "time_format": "15:04",
+  "columns": {
+    "date": 0,
+    "debit_amount": 2,
+    "credit_amount": 4,
+    "description": 7,
+    "reference": 12
+  },
+  "source_account": "assets:checking:sample-bank",
+  "default_debit_account": "expenses:unknown",
+  "default_credit_account": "income:unknown",
+  "currency": "BGN",
+  "transforms": [
+    {
+      "description_contains": "BILLA",
+      "debit_account": "expenses:groceries",
+      "tags": { "merchant": "billa" }
+    },
+    {
+      "description_contains": "Temu",
+      "debit_account": "expenses:shopping",
+      "tags": { "merchant": "temu" }
+    },
+    {
+      "description_contains": "CityGate",
+      "debit_account": "expenses:transport",
+      "tags": { "type": "transit" }
+    },
+    {
+      "description_contains": "SOPHARMACY",
+      "debit_account": "expenses:health",
+      "tags": { "merchant": "sopharmacy" }
+    },
+    {
+      "description_contains": "STOMATOLOG",
+      "debit_account": "expenses:health:dental",
+      "tags": { "category": "dental" }
+    }
+  ]
+}
