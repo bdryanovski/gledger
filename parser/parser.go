@@ -102,10 +102,19 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 		p.advance()
 	}
 
-	// ── 3. Description (one or more TOKEN_STRING words) ──────────────────
+	// ── 3. Description — everything up to newline or inline comment ───────
+	//
+	// We consume ALL token types (not just TOKEN_STRING) so that descriptions
+	// containing slashes, numbers, parentheses, etc. are preserved verbatim.
+	// Example: "BILLA 127 01", "WAY4BOOK-2025/01/02", "Payment (ref: 123)"
 	var descParts []string
-	for p.current.Type == AST.TOKEN_STRING {
-		descParts = append(descParts, p.current.Value)
+	for p.current.Type != AST.TOKEN_NEWLINE &&
+		p.current.Type != AST.TOKEN_EOF &&
+		p.current.Type != AST.TOKEN_COMMENT {
+		val := strings.TrimSpace(p.current.Value)
+		if val != "" {
+			descParts = append(descParts, val)
+		}
 		p.advance()
 	}
 	if len(descParts) == 0 {

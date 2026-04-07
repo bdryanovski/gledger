@@ -35,6 +35,8 @@ func Run(args []string) error {
 		return commands.RegisterCommand(ctx, cmdArgs)
 	case "is", "income-statement", "income":
 		return commands.ISCommand(ctx, cmdArgs)
+	case "import":
+		return commands.ImportCommand(ctx, cmdArgs)
 	case "insert":
 		return commands.InsertCommand(ctx, cmdArgs)
 	case "add":
