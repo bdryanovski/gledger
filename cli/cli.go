@@ -32,10 +32,14 @@ func Run(args []string) error {
 	case "register", "reg", "r":
 		return commands.RegisterCommand(ctx, cmdArgs)
 	case "list", "ls":
-		// list is an alias for register
 		return commands.RegisterCommand(ctx, cmdArgs)
+	case "is", "income-statement", "income":
+		return commands.ISCommand(ctx, cmdArgs)
+	case "insert":
+		return commands.InsertCommand(ctx, cmdArgs)
 	case "add":
-		return commands.AddCommand(ctx, cmdArgs)
+		// 'add' also uses the interactive insert form.
+		return commands.InsertCommand(ctx, cmdArgs)
 	case "help", "-h", "--help":
 		return runHelp(cmdArgs)
 	case "version", "-v", "--version":
@@ -59,12 +63,13 @@ Global flags:
   --verbose         Enable verbose output
 
 Commands:
-  balance, bal      Show account balances
-  register, reg     Show a transaction register with running total
-  list, ls          Alias for register
-  add               Add a transaction via command-line flags
-  help              Show this help message
-  version           Show version information
+  balance, bal           Show account balances
+  register, reg, r       Show a transaction register with running total
+  list, ls               Alias for register
+  is, income-statement   Show income statement (revenues vs expenses)
+  insert, add            Interactive form to add a new transaction
+  help                   Show this help message
+  version                Show version information
 
 Examples:
   doublebook balance
