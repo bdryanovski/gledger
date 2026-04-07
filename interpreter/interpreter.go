@@ -35,7 +35,7 @@ func NewInterpreter(cfg *config.Config) *Interpreter {
 		plugins:      Plugin.NewPluginManager(),
 		config:       cfg,
 	}
-	i.plugins.Register(TemplatePlugin.NewTemplatePlugin())
+	i.plugins.Register(TemplatePlugin.NewTemplatePlugin(), nil) //nolint:errcheck
 	return i
 }
 

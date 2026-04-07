@@ -1,11 +1,16 @@
+// Package TemplatePlugin is kept for backward compatibility.
+// New plugins should be placed in plugin/extensions/.
 package TemplatePlugin
 
 import (
 	AST "doublebook/ast"
-	"strings"
+	Plugin "doublebook/plugin"
 )
 
+// TemplatePlugin is the original placeholder plugin.
+// It now embeds DefaultPlugin to satisfy the full Plugin interface.
 type TemplatePlugin struct {
+	Plugin.DefaultPlugin
 	data map[string]interface{}
 }
 
@@ -13,28 +18,10 @@ func NewTemplatePlugin() *TemplatePlugin {
 	return &TemplatePlugin{data: make(map[string]interface{})}
 }
 
-func (p *TemplatePlugin) Name() string {
-	return "template"
-}
-
-func (p *TemplatePlugin) OnParse(transactions *AST.Transaction) error {
-	return nil
-}
-
-func (p *TemplatePlugin) OnFilter(transactions []*AST.Transaction) []*AST.Transaction {
-	return transactions
-}
-
-func (p *TemplatePlugin) OnAdd(transactions *AST.Transaction) error {
-	return nil
-}
+func (p *TemplatePlugin) Name() string        { return "template" }
+func (p *TemplatePlugin) Version() string     { return "1.0.0" }
+func (p *TemplatePlugin) Description() string { return "Template plugin (placeholder)" }
 
 func (p *TemplatePlugin) OnReport(transactions []*AST.Transaction) string {
-	var report strings.Builder
-
-	report.WriteString("Template Plugin Report\n")
-	report.WriteString("====================\n")
-	report.WriteString("This is a template plugin. You can customize this report to display any information you want.\n")
-
-	return report.String()
+	return "" // no-op by default
 }

@@ -35,6 +35,8 @@ func Run(args []string) error {
 		return commands.RegisterCommand(ctx, cmdArgs)
 	case "is", "income-statement", "income":
 		return commands.ISCommand(ctx, cmdArgs)
+	case "plugin":
+		return commands.PluginCommand(ctx, cmdArgs)
 	case "api":
 		return commands.APICommand(ctx, cmdArgs)
 	case "web":

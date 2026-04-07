@@ -1,65 +1,66 @@
+// Package Plugin defines the DoubleBook plugin interface and the DefaultPlugin
+// embed helper that provides no-op implementations for all optional hooks.
 package Plugin
 
 import (
-	"doublebook/ast"
-	"fmt"
+	AST "doublebook/ast"
 )
 
+// ---------------------------------------------------------------------------
+// Plugin interface
+// ---------------------------------------------------------------------------
+
+// Plugin is the interface every DoubleBook plugin must implement.
+// Embed DefaultPlugin to get no-op defaults for all hook methods.
 type Plugin interface {
+	// Identity
 	Name() string
-	OnParse(transaction *AST.Transaction) error
+	Version() string
+	Description() string
+
+	// Lifecycle
+	Initialize(config map[string]interface{}) error
+	Shutdown() error
+
+	// Hooks (embed DefaultPlugin for no-op defaults)
+	OnParse(transactions []*AST.Transaction) error
 	OnAdd(transaction *AST.Transaction) error
-	OnFilter(transaction []*AST.Transaction) []*AST.Transaction
-	OnReport(transaction []*AST.Transaction) string
+	OnFilter(transactions []*AST.Transaction) []*AST.Transaction
+	OnReport(transactions []*AST.Transaction) string
+	OnImport(rows []ImportRow, importMapName string) error
 }
 
-type PluginManager struct {
-	plugins []Plugin
+// ImportRow is a single CSV row passed to OnImport before it is written.
+type ImportRow struct {
+	Date        string
+	Description string
+	Amount      float64
+	Currency    string
+	Account     string
+	Reference   string
 }
 
-func NewPluginManager() *PluginManager {
-	return &PluginManager{
-		plugins: []Plugin{},
-	}
-}
+// ---------------------------------------------------------------------------
+// DefaultPlugin — embed for no-op hook implementations
+// ---------------------------------------------------------------------------
 
-func (pm *PluginManager) Register(plugin Plugin) {
-	pm.plugins = append(pm.plugins, plugin)
-}
+// DefaultPlugin provides no-op implementations of every optional hook.
+// Embed this struct in your plugin so you only need to override the hooks
+// that are relevant to you.
+//
+//	type MyPlugin struct {
+//	    plugin.DefaultPlugin  // inherits all no-op hooks
+//	}
+type DefaultPlugin struct{}
 
-func (pm *PluginManager) ExecuteOnParse(transaction *AST.Transaction) error {
-	for _, plugin := range pm.plugins {
-		if err := plugin.OnParse(transaction); err != nil {
-			return fmt.Errorf("Plugin %s OnParse error: %v", plugin.Name(), err)
-		}
-	}
-	return nil
+func (d *DefaultPlugin) OnParse(_ []*AST.Transaction) error { return nil }
+func (d *DefaultPlugin) OnAdd(_ *AST.Transaction) error     { return nil }
+func (d *DefaultPlugin) OnFilter(txns []*AST.Transaction) []*AST.Transaction {
+	return txns
 }
-
-func (pm *PluginManager) ExecuteOnAdd(transaction *AST.Transaction) error {
-	for _, plugin := range pm.plugins {
-		if err := plugin.OnAdd(transaction); err != nil {
-			return fmt.Errorf("Plugin %s OnAdd error: %v", plugin.Name(), err)
-		}
-	}
-	return nil
-}
-
-func (pm *PluginManager) ExecuteOnFilter(transactions []*AST.Transaction) []*AST.Transaction {
-	result := transactions
-	for _, plugin := range pm.plugins {
-		result = plugin.OnFilter(result)
-	}
-	return result
-}
-
-func (pm *PluginManager) ExecuteOnReport(transactions []*AST.Transaction) []string {
-	var reports []string
-	for _, plugin := range pm.plugins {
-		report := plugin.OnReport(transactions)
-		if report != "" {
-			reports = append(reports, report)
-		}
-	}
-	return reports
-}
+func (d *DefaultPlugin) OnReport(_ []*AST.Transaction) string      { return "" }
+func (d *DefaultPlugin) OnImport(_ []ImportRow, _ string) error    { return nil }
+func (d *DefaultPlugin) Shutdown() error                           { return nil }
+func (d *DefaultPlugin) Version() string                           { return "0.0.0" }
+func (d *DefaultPlugin) Description() string                       { return "" }
+func (d *DefaultPlugin) Initialize(_ map[string]interface{}) error { return nil }
