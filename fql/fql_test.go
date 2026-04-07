@@ -222,7 +222,7 @@ func TestOrderByDesc(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestAccountsTable(t *testing.T) {
-	c := mustCompile(t, "SELECT name, total_amount, transaction_count FROM accounts ORDER BY total_amount DESC")
+	c := mustCompile(t, "SELECT account, total_amount, transaction_count FROM accounts ORDER BY total_amount DESC")
 	assertSQL(t, c, "ORDER BY total_amount DESC")
 }
 

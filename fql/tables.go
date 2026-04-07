@@ -83,7 +83,7 @@ JOIN postings p ON p.transaction_id = t.id`,
 	"accounts": {
 		Name: "accounts",
 		Columns: []VirtualColumn{
-			{Name: "name", Type: "text", Description: "Full account name"},
+			{Name: "account", Type: "text", Description: "Full account name"},
 			{Name: "type", Type: "text", Description: "Account type: asset/liability/equity/income/expense/other"},
 			{Name: "transaction_count", Type: "integer", Description: "Number of postings"},
 			{Name: "total_amount", Type: "real", Description: "Sum of all posting amounts"},
@@ -92,7 +92,7 @@ JOIN postings p ON p.transaction_id = t.id`,
 		},
 		SQL: `
 SELECT
-    p.account AS name,
+    p.account,
     CASE
         WHEN p.account LIKE 'assets%'      THEN 'asset'
         WHEN p.account LIKE 'liabilities%' THEN 'liability'

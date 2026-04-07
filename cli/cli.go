@@ -35,6 +35,8 @@ func Run(args []string) error {
 		return commands.RegisterCommand(ctx, cmdArgs)
 	case "is", "income-statement", "income":
 		return commands.ISCommand(ctx, cmdArgs)
+	case "fql", "query":
+		return commands.FQLCommand(ctx, cmdArgs)
 	case "import":
 		return commands.ImportCommand(ctx, cmdArgs)
 	case "insert":
@@ -69,7 +71,9 @@ Commands:
   register, reg, r       Show a transaction register with running total
   list, ls               Alias for register
   is, income-statement   Show income statement (revenues vs expenses)
+  fql, query             Financial Query Language (REPL or --query "...")
   insert, add            Interactive form to add a new transaction
+  import                 Import transactions from a CSV file
   help                   Show this help message
   version                Show version information
 
