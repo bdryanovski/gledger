@@ -279,9 +279,10 @@ func (m *Model) submitTransaction() error {
 	txn := &AST.Transaction{
 		Date:        date,
 		Description: description,
-		Postings: []AST.Posting{
-			{Account: account1, Amount: amount1},
-			{Account: account2, Amount: AST.Amount{Value: -amount1.Value, Currency: amount1.Currency}},
+		Tags:        make(map[string]string),
+		Postings: []*AST.Posting{
+			AST.NewPosting(account1, amount1),
+			AST.NewPosting(account2, AST.Amount{Value: -amount1.Value, Currency: amount1.Currency}),
 		},
 	}
 

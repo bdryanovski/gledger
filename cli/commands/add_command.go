@@ -73,9 +73,10 @@ func createTransaction(date, description string, amount float64, from, to string
 	return &AST.Transaction{
 		Date:        parseDate,
 		Description: description,
-		Postings: []AST.Posting{
-			{Account: from, Amount: AST.Amount{Value: -amount, Currency: "USD"}},
-			{Account: to, Amount: AST.Amount{Value: amount, Currency: "USD"}},
+		Tags:        make(map[string]string),
+		Postings: []*AST.Posting{
+			AST.NewPosting(from, AST.Amount{Value: -amount, Currency: "USD"}),
+			AST.NewPosting(to, AST.Amount{Value: amount, Currency: "USD"}),
 		},
 	}, nil
 }

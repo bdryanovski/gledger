@@ -89,7 +89,7 @@ func (parser *Parser) parserTransaction() (*AST.Transaction, error) {
 	}
 	parser.nextToken()
 
-	postings := []AST.Posting{}
+	postings := []*AST.Posting{}
 
 	for parser.current.Type == AST.TOKEN_INDENT {
 		posting, err := parser.parsePosting()
@@ -117,37 +117,37 @@ func (parser *Parser) parserTransaction() (*AST.Transaction, error) {
 	return currentTransaction, nil
 }
 
-func (parser *Parser) parsePosting() (AST.Posting, error) {
+func (parser *Parser) parsePosting() (*AST.Posting, error) {
 	if parser.current.Type != AST.TOKEN_INDENT {
-		return AST.Posting{}, fmt.Errorf("Expected indent at line %d, got %s", parser.current.Line, parser.current.Value)
+		return nil, fmt.Errorf("Expected indent at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_ACCOUNT {
-		return AST.Posting{}, fmt.Errorf("Expected account at line %d, got %s", parser.current.Line, parser.current.Value)
+		return nil, fmt.Errorf("Expected account at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
 	account := parser.current.Value
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_AMOUNT {
-		return AST.Posting{}, fmt.Errorf("Expected amount at line %d, got %s", parser.current.Line, parser.current.Value)
+		return nil, fmt.Errorf("Expected amount at line %d, got %s", parser.current.Line, parser.current.Value)
 	}
 
 	amount, err := utils.ParseAmount(parser.current.Value)
 	if err != nil {
-		return AST.Posting{}, fmt.Errorf("Invalid amount format at line %d: %v", parser.current.Line, err)
+		return nil, fmt.Errorf("Invalid amount format at line %d: %v", parser.current.Line, err)
 	}
 
 	parser.nextToken()
 
 	if parser.current.Type != AST.TOKEN_NEWLINE {
-		return AST.Posting{}, fmt.Errorf("Expected newline after posting at line %d", parser.current.Line)
+		return nil, fmt.Errorf("Expected newline after posting at line %d", parser.current.Line)
 	}
 	parser.nextToken()
 
-	return AST.Posting{Account: account, Amount: amount}, nil
+	return AST.NewPosting(account, amount), nil
 }
 
 // parseTransactions takes raw ledger text and returns parsed transactions.
