@@ -1,43 +1,45 @@
 package commands
 
 import (
+	"fmt"
+
 	"doublebook/config"
 	Interpreter "doublebook/interpreter"
-	"fmt"
 )
 
-// ListCommand prints a plain-text transaction register to stdout.
-// Format matches hledger's register output style.
+// ListCommand prints a plain-text transaction register to stdout,
+// respecting the BeginDate/EndDate filters from ctx.
 //
-// NOTE: This is a temporary implementation that will be superseded by the
-// full register command in T1.10.
-func ListCommand(args []string) error {
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return fmt.Errorf("error loading config: %w", err)
-	}
+// NOTE: This is a temporary implementation superseded by the full register
+// command in T1.10.
+func ListCommand(ctx *config.CLIContext, args []string) error {
+	interp := Interpreter.NewInterpreter(ctx.Config)
 
-	interp := Interpreter.NewInterpreter(cfg)
-	if err := interp.LoadFromFile(cfg.DataFile); err != nil {
-		// Non-fatal: the journal file may not exist yet.
+	// Use LoadJournal for multi-file support when a journal name is given,
+	// falling back to the single-file path for backward compat.
+	journalName := ctx.EffectiveJournalName()
+	if err := interp.LoadJournal(journalName); err != nil {
 		fmt.Printf("Note: could not load journal: %v\n\n", err)
 	}
 
-	txns := interp.GetTransactions()
+	filter := Interpreter.Filter{
+		BeginDate: ctx.BeginDate,
+		EndDate:   ctx.EndDate,
+	}
+
+	txns := interp.FilteredTransactions(filter)
 	if len(txns) == 0 {
 		fmt.Println("No transactions found.")
 		return nil
 	}
 
 	for i, txn := range txns {
-		// Blank line between transactions (but not before the first).
 		if i > 0 {
 			fmt.Println()
 		}
-
 		fmt.Printf("%s %s\n", txn.Date.Format("2006-01-02"), txn.Description)
-		for _, posting := range txn.Postings {
-			fmt.Printf("    %-36s  %s\n", posting.Account, posting.Amount.String())
+		for _, p := range txn.Postings {
+			fmt.Printf("    %-36s  %s\n", p.Account, p.Amount.String())
 		}
 	}
 
