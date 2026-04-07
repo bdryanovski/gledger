@@ -61,11 +61,30 @@ tidy:
 	go mod tidy -v
 	go fmt ./...
 
-## build: build the application
+## web-install: install web UI dependencies
+.PHONY: web-install
+web-install:
+	cd web-ui && npm install
+
+## web-build: build the React frontend into web/static/dist/
+.PHONY: web-build
+web-build: web-install
+	cd web-ui && npm run build
+
+## dev-web: run the Vite dev server (proxies /api to localhost:5555)
+.PHONY: dev-web
+dev-web:
+	cd web-ui && npm run dev
+
+## build: build the application (without web)
 .PHONY: build
 build:
-	# Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
-	go build -o=/tmp/bin/${binary_name} ${main_package_path}
+	go build -o=${binary_name} ${main_package_path}
+
+## build/full: build web UI then the Go binary
+.PHONY: build/full
+build/full: web-build
+	go build -o=${binary_name} ${main_package_path}
 
 ## run: run the  application
 .PHONY: run

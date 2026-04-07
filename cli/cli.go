@@ -37,6 +37,8 @@ func Run(args []string) error {
 		return commands.ISCommand(ctx, cmdArgs)
 	case "api":
 		return commands.APICommand(ctx, cmdArgs)
+	case "web":
+		return commands.WebCommand(ctx, cmdArgs)
 	case "fql", "query":
 		return commands.FQLCommand(ctx, cmdArgs)
 	case "import":
