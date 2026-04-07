@@ -29,10 +29,13 @@ func Run(args []string) error {
 	switch command {
 	case "balance", "bal":
 		return commands.BalanceCommand(ctx, cmdArgs)
+	case "register", "reg", "r":
+		return commands.RegisterCommand(ctx, cmdArgs)
+	case "list", "ls":
+		// list is an alias for register
+		return commands.RegisterCommand(ctx, cmdArgs)
 	case "add":
 		return commands.AddCommand(ctx, cmdArgs)
-	case "list", "ls":
-		return commands.ListCommand(ctx, cmdArgs)
 	case "help", "-h", "--help":
 		return runHelp(cmdArgs)
 	case "version", "-v", "--version":
@@ -56,15 +59,20 @@ Global flags:
   --verbose         Enable verbose output
 
 Commands:
-  list, ls          Print a transaction register
+  balance, bal      Show account balances
+  register, reg     Show a transaction register with running total
+  list, ls          Alias for register
   add               Add a transaction via command-line flags
   help              Show this help message
   version           Show version information
 
 Examples:
-  doublebook list
-  doublebook --journal personal list
-  doublebook --begin 2025-01-01 --end 2025-01-31 list
+  doublebook balance
+  doublebook balance --tree
+  doublebook register
+  doublebook register --account expenses --limit 10
+  doublebook --journal personal register
+  doublebook --begin 2025-01-01 --end 2025-01-31 register
   doublebook add --date 2025-01-15 --description "Coffee" --amount 5.00 \
                  --from assets:checking --to expenses:dining
 
