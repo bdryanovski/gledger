@@ -29,8 +29,11 @@ func (parser *Parser) nextToken() {
 	parser.peek = parser.lexer.NextToken()
 }
 
+// skipNewLines advances past blank lines and standalone comment lines so the
+// top-level loop always starts on a TOKEN_DATE or TOKEN_EOF.
 func (parser *Parser) skipNewLines() {
-	for parser.current.Type == AST.TOKEN_NEWLINE {
+	for parser.current.Type == AST.TOKEN_NEWLINE ||
+		parser.current.Type == AST.TOKEN_COMMENT {
 		parser.nextToken()
 	}
 }

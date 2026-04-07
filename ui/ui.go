@@ -239,7 +239,11 @@ func (model Model) updateAdd(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (model Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Just wait for ESC to go back
+	switch msg.String() {
+	case "esc", "q":
+		model.currentView = VIEW_LIST
+		return model, nil
+	}
 	return model, nil
 }
 
@@ -300,10 +304,10 @@ func (m *Model) updateTableRows() {
 	for _, txn := range txns {
 		for _, posting := range txn.Postings {
 			rows = append(rows, table.Row{
-				txn.Date.Format("2006-01-02"),
-				txn.Description,
-				posting.Account,
-				posting.Amount.String(),
+				txn.Date.Format("2006-01-02"), // col 0: Date
+				txn.Description,               // col 1: Description
+				posting.Amount.String(),       // col 2: Amount
+				posting.Account,               // col 3: Account
 			})
 		}
 	}
