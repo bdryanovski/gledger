@@ -1,13 +1,21 @@
+// Package UI implements the DoubleBook fullscreen terminal interface using
+// Bubbletea.  The TUI has four views:
+//
+//	VIEW_LIST   — scrollable transaction table with a detail pane
+//	VIEW_ADD    — form for adding a new transaction
+//	VIEW_REPORT — balance / income-statement report
+//	VIEW_HELP   — keyboard shortcut reference
 package UI
 
 import (
+	"fmt"
+	"strings"
+	"time"
+
 	AST "doublebook/ast"
 	"doublebook/config"
 	Interpreter "doublebook/interpreter"
 	"doublebook/utils"
-	"fmt"
-	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -15,7 +23,10 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Different mode of the UI
+// ---------------------------------------------------------------------------
+// View identifiers
+// ---------------------------------------------------------------------------
+
 type ViewMode int
 
 const (
@@ -25,424 +36,677 @@ const (
 	VIEW_HELP
 )
 
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
+
+var (
+	styleHeader = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#ffffff")).
+			Background(lipgloss.Color("#7C3AED")).
+			Padding(0, 2)
+
+	styleTitle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#7C3AED"))
+
+	styleSep = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240"))
+
+	styleFooter = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("240")).
+			Italic(true)
+
+	styleMsg = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#22c55e")).
+			Bold(true)
+
+	styleErr = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ef4444")).
+			Bold(true)
+
+	styleLabel = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("245"))
+
+	styleValue = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("252"))
+
+	stylePositive = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#22c55e"))
+
+	styleNegative = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ef4444"))
+)
+
+// ---------------------------------------------------------------------------
+// Model
+// ---------------------------------------------------------------------------
+
+// Model is the Bubbletea application model.
 type Model struct {
 	interpreter *Interpreter.Interpreter
 	config      *config.Config
+
 	currentView ViewMode
-	table       table.Model
-	formInputs  []textinput.Model
-	formFocus   int
-	message     string
-	err         error
+
+	// Dimensions — updated on tea.WindowSizeMsg
+	width  int
+	height int
+
+	// Transaction table (LIST view)
+	table table.Model
+
+	// Add-transaction form (ADD view)
+	formInputs []textinput.Model
+	formFocus  int
+
+	// Status message shown in the header area
+	message    string
+	messageErr bool // true → show message in red, false → green
 }
 
+// ---------------------------------------------------------------------------
+// Constructor
+// ---------------------------------------------------------------------------
+
+const (
+	// Lines of chrome surrounding the table in VIEW_LIST.
+	// 1 header bar + 1 blank + 1 "Transactions" title + 1 sep + 1 blank +
+	// 1 blank after table + 1 detail-pane header + 3 detail lines + 1 footer
+	tableChrome = 11
+
+	// Minimum table height even on tiny terminals.
+	minTableHeight = 5
+)
+
+// InitialModel constructs the initial TUI model and loads journal data.
 func InitialModel() (Model, error) {
-	config, err := config.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		return Model{}, fmt.Errorf("Error loading config: %v", err)
+		return Model{}, fmt.Errorf("loading config: %w", err)
 	}
 
-	interpreter := Interpreter.NewInterpreter(config)
+	interp := Interpreter.NewInterpreter(cfg)
+	// Non-fatal: may not exist yet.
+	_ = interp.LoadFromFile(cfg.DataFile)
 
-	if err := interpreter.LoadFromFile(config.DataFile); err != nil {
-		fmt.Printf("Error loading transactions: %v\n", err)
-	}
-
-	columns := []table.Column{
+	// Table columns — widths are adjusted later on WindowSizeMsg.
+	cols := []table.Column{
 		{Title: "Date", Width: 12},
-		{Title: "Description", Width: 30},
-		{Title: "Amount", Width: 10},
-		{Title: "Account", Width: 20},
+		{Title: "Description", Width: 28},
+		{Title: "Amount", Width: 14},
+		{Title: "Account", Width: 24},
 	}
-
-	t := table.New(table.WithColumns(columns), table.WithFocused(true), table.WithHeight(15))
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithFocused(true),
+		table.WithHeight(minTableHeight),
+	)
+	ts := table.DefaultStyles()
+	ts.Header = ts.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		BorderBottom(true).
 		Bold(true)
-
-	s.Selected = s.Selected.
+	ts.Selected = ts.Selected.
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).
 		Bold(false)
+	t.SetStyles(ts)
 
-	t.SetStyles(s)
-
+	// Add-transaction form inputs.
 	inputs := make([]textinput.Model, 5)
-
-	inputs[0] = textinput.New()
-	inputs[0].Placeholder = "Date (YYYY-MM-DD)"
-	inputs[0].Prompt = "Date: "
-	inputs[0].CharLimit = 10
-	inputs[0].Width = 30
+	specs := []struct {
+		placeholder, prompt string
+		charLimit, width    int
+	}{
+		{"YYYY-MM-DD", "Date:          ", 10, 20},
+		{"Grocery Store", "Description:   ", 100, 40},
+		{"expenses:food", "Debit account: ", 50, 40},
+		{"$45.32", "Amount:        ", 20, 20},
+		{"assets:checking", "Credit account:", 50, 40},
+	}
+	for i, spec := range specs {
+		inp := textinput.New()
+		inp.Placeholder = spec.placeholder
+		inp.Prompt = spec.prompt
+		inp.CharLimit = spec.charLimit
+		inp.Width = spec.width
+		inputs[i] = inp
+	}
 	inputs[0].Focus()
-
-	inputs[1] = textinput.New()
-	inputs[1].Placeholder = "Description"
-	inputs[1].Prompt = "Description: "
-	inputs[1].CharLimit = 100
-	inputs[1].Width = 50
-
-	inputs[2] = textinput.New()
-	inputs[2].Placeholder = "account:name"
-	inputs[2].Prompt = "Acount 1: "
-	inputs[2].CharLimit = 50
-	inputs[2].Width = 40
-
-	inputs[3] = textinput.New()
-	inputs[3].Placeholder = "$0.00"
-	inputs[3].Prompt = "Amount: "
-	inputs[3].CharLimit = 50
-	inputs[3].Width = 40
-
-	inputs[4] = textinput.New()
-	inputs[4].Placeholder = "account:name"
-	inputs[4].Prompt = "Account 2: "
-	inputs[4].CharLimit = 50
-	inputs[4].Width = 40
+	inputs[0].SetValue(time.Now().Format("2006-01-02"))
 
 	m := Model{
-		interpreter: interpreter,
-		config:      config,
+		interpreter: interp,
+		config:      cfg,
 		currentView: VIEW_LIST,
+		width:       80,
+		height:      24,
 		table:       t,
 		formInputs:  inputs,
-		formFocus:   0,
 	}
-
-	m.updateTableRows()
+	m.rebuildTable()
 
 	return m, nil
 }
 
-func (model Model) Init() tea.Cmd {
+// ---------------------------------------------------------------------------
+// Bubbletea interface
+// ---------------------------------------------------------------------------
+
+func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
-	var cmd tea.Cmd
-
+// Update is the central event handler.  Global navigation keys are handled
+// first and return immediately so they cannot fall through to view handlers.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
-			/**
-			* Save before you go go go
-			 */
-			if err := model.interpreter.SaveToFile(model.config.DataFile); err != nil {
-				fmt.Printf("Error saving transactions: %v\n", err)
-				model.err = err
-			}
-			return model, tea.Quit
-		case "?":
-			model.currentView = VIEW_HELP
-			return model, nil
-		case "a":
-			model.currentView = VIEW_ADD
-		case "r":
-			model.currentView = VIEW_REPORT
-		case "h":
-			model.currentView = VIEW_HELP
-		}
 
-		switch model.currentView {
-		case VIEW_LIST:
-			return model.updateList(msg)
-		case VIEW_ADD:
-			return model.updateAdd(msg)
-		case VIEW_REPORT:
-			return model.updateReport(msg)
-		}
-
+	// ── Window resize ─────────────────────────────────────────────────────
 	case tea.WindowSizeMsg:
-		model.table.SetHeight(msg.Height - 10)
-	}
+		m.width = msg.Width
+		m.height = msg.Height
+		m.resizeTable()
+		return m, nil
 
-	return model, cmd
+	// ── Keyboard ──────────────────────────────────────────────────────────
+	case tea.KeyMsg:
+		key := msg.String()
 
-}
-
-func (model Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-
-	switch msg.String() {
-	case "a":
-		model.currentView = VIEW_ADD
-		model.formFocus = 0
-		model.formInputs[0].Focus()
-
-		model.formInputs[0].SetValue(time.Now().Format("2006-01-02"))
-		return model, textinput.Blink
-
-	case "r":
-		model.currentView = VIEW_REPORT
-	case "enter":
-		return model, nil
-	}
-
-	model.table, cmd = model.table.Update(msg)
-	return model, cmd
-
-}
-
-func (model Model) updateAdd(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "tab", "shift+tab", "up", "down":
-		if msg.String() == "up" || msg.String() == "shift+tab" {
-			model.formFocus--
-		} else {
-			model.formFocus++
+		// Global quit — save first.
+		if key == "ctrl+c" {
+			_ = m.interpreter.SaveToFile(m.config.DataFile)
+			return m, tea.Quit
 		}
 
-		if model.formFocus > len(model.formInputs)-1 {
-			model.formFocus = 0
-		} else if model.formFocus < 0 {
-			model.formFocus = len(model.formInputs) - 1
+		// Quit from any non-add view with 'q'.
+		if key == "q" && m.currentView != VIEW_ADD {
+			_ = m.interpreter.SaveToFile(m.config.DataFile)
+			return m, tea.Quit
 		}
 
-		cmds := make([]tea.Cmd, len(model.formInputs))
-		for i := range model.formInputs {
-			if i == model.formFocus {
-				cmds[i] = model.formInputs[i].Focus()
-			} else {
-				model.formInputs[i].Blur()
+		// Global navigation — handled here and returned immediately.
+		// This prevents the key from also being passed to the active view.
+		switch key {
+		case "a":
+			if m.currentView == VIEW_LIST {
+				return m.enterAddView()
+			}
+		case "r":
+			if m.currentView == VIEW_LIST || m.currentView == VIEW_HELP {
+				m.currentView = VIEW_REPORT
+				m.message = ""
+				return m, nil
+			}
+		case "?", "h":
+			if m.currentView == VIEW_LIST || m.currentView == VIEW_REPORT {
+				m.currentView = VIEW_HELP
+				m.message = ""
+				return m, nil
+			}
+		case "esc":
+			if m.currentView != VIEW_LIST {
+				m.currentView = VIEW_LIST
+				m.message = ""
+				return m, nil
 			}
 		}
 
-		return model, tea.Batch(cmds...)
-	case "enter":
-		if err := model.submitTransaction(); err != nil {
-			model.message = fmt.Sprintf("Error adding transaction: %v", err)
-		} else {
-			model.message = "Transaction added successfully!"
-			model.currentView = VIEW_LIST
-			model.updateTableRows()
-
-			for i := range model.formInputs {
-				if i == 0 {
-					model.formInputs[i].SetValue(time.Now().Format("2006-01-02"))
-				} else {
-					model.formInputs[i].SetValue("")
-				}
-			}
+		// Dispatch to the active view's handler.
+		switch m.currentView {
+		case VIEW_LIST:
+			return m.updateList(msg)
+		case VIEW_ADD:
+			return m.updateAdd(msg)
+		case VIEW_REPORT:
+			return m.updateReport(msg)
+		case VIEW_HELP:
+			return m, nil
 		}
-		return model, nil
 	}
 
+	return m, nil
+}
+
+// ---------------------------------------------------------------------------
+// Per-view update handlers
+// ---------------------------------------------------------------------------
+
+func (m Model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	model.formInputs[model.formFocus], cmd = model.formInputs[model.formFocus].Update(msg)
-	return model, cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
 }
 
-func (model Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc", "q":
-		model.currentView = VIEW_LIST
-		return model, nil
+func (m Model) updateAdd(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	switch key {
+	case "tab", "down":
+		m.formFocus = (m.formFocus + 1) % len(m.formInputs)
+		return m, m.focusFormField()
+
+	case "shift+tab", "up":
+		m.formFocus = (m.formFocus - 1 + len(m.formInputs)) % len(m.formInputs)
+		return m, m.focusFormField()
+
+	case "enter":
+		if err := m.submitTransaction(); err != nil {
+			m.message = err.Error()
+			m.messageErr = true
+		} else {
+			m.message = "Transaction added!"
+			m.messageErr = false
+			m.currentView = VIEW_LIST
+			m.rebuildTable()
+			m.resetForm()
+		}
+		return m, nil
+
+	case "esc":
+		m.currentView = VIEW_LIST
+		m.message = ""
+		m.resetForm()
+		return m, nil
 	}
-	return model, nil
+
+	// Forward key to focused input.
+	var cmd tea.Cmd
+	m.formInputs[m.formFocus], cmd = m.formInputs[m.formFocus].Update(msg)
+	return m, cmd
 }
 
-func (m *Model) submitTransaction() error {
-	// Parse date
-	date, err := time.Parse("2006-01-02", m.formInputs[0].Value())
-	if err != nil {
-		return fmt.Errorf("invalid date format")
-	}
-
-	description := m.formInputs[1].Value()
-	if description == "" {
-		return fmt.Errorf("description is required")
-	}
-
-	account1 := m.formInputs[2].Value()
-	if account1 == "" {
-		return fmt.Errorf("account 1 is required")
-	}
-
-	amount1Str := m.formInputs[3].Value()
-	amount1, err := utils.ParseAmount(amount1Str)
-	if err != nil {
-		return fmt.Errorf("invalid amount 1")
-	}
-
-	account2 := m.formInputs[4].Value()
-	if account2 == "" {
-		return fmt.Errorf("account 2 is required")
-	}
-
-	// Create transaction
-	txn := &AST.Transaction{
-		Date:        date,
-		Description: description,
-		Tags:        make(map[string]string),
-		Postings: []*AST.Posting{
-			AST.NewPosting(account1, amount1),
-			AST.NewPosting(account2, AST.Amount{Value: -amount1.Value, Currency: amount1.Currency}),
-		},
-	}
-
-	// Add to engine
-	if err := m.interpreter.AddTransaction(txn); err != nil {
-		return err
-	}
-
-	if err := m.interpreter.SaveToFile(m.config.DataFile); err != nil {
-		return fmt.Errorf("Error saving transactions: %v", err)
-	}
-
-	return nil
+func (m Model) updateReport(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// All navigation is handled globally; nothing extra needed here.
+	return m, nil
 }
 
-func (m *Model) updateTableRows() {
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+func (m Model) View() string {
+	var b strings.Builder
+
+	// ── Header bar ────────────────────────────────────────────────────────
+	viewName := map[ViewMode]string{
+		VIEW_LIST:   "Transactions",
+		VIEW_ADD:    "Add Transaction",
+		VIEW_REPORT: "Balance Report",
+		VIEW_HELP:   "Help",
+	}[m.currentView]
+
+	headerText := fmt.Sprintf(" DoubleBook  ·  %s ", viewName)
+	b.WriteString(styleHeader.Width(m.width).Render(headerText))
+	b.WriteByte('\n')
+
+	// ── Status message ────────────────────────────────────────────────────
+	if m.message != "" {
+		style := styleMsg
+		if m.messageErr {
+			style = styleErr
+		}
+		b.WriteString(style.Render("  " + m.message))
+		b.WriteByte('\n')
+	} else {
+		b.WriteByte('\n')
+	}
+
+	// ── View content ──────────────────────────────────────────────────────
+	switch m.currentView {
+	case VIEW_LIST:
+		b.WriteString(m.viewList())
+	case VIEW_ADD:
+		b.WriteString(m.viewAdd())
+	case VIEW_REPORT:
+		b.WriteString(m.viewReport())
+	case VIEW_HELP:
+		b.WriteString(m.viewHelp())
+	}
+
+	return b.String()
+}
+
+// viewList renders the transaction table and a detail pane for the selected row.
+func (m Model) viewList() string {
+	var b strings.Builder
+
+	sep := styleSep.Render(strings.Repeat("─", m.width))
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	b.WriteString(m.table.View())
+	b.WriteByte('\n')
+	b.WriteString(sep)
+	b.WriteByte('\n')
+
+	// Detail pane: show selected posting's transaction info.
+	b.WriteString(m.selectedDetail())
+	b.WriteByte('\n')
+
+	// Footer.
+	b.WriteString(styleFooter.Render(
+		"  [↑↓] scroll  [a] add  [r] report  [?] help  [q] quit",
+	))
+
+	return b.String()
+}
+
+// selectedDetail returns a one-line summary of the currently selected row.
+func (m Model) selectedDetail() string {
+	rows := m.table.Rows()
+	cursor := m.table.Cursor()
+	if len(rows) == 0 || cursor < 0 || cursor >= len(rows) {
+		return styleLabel.Render("  No transaction selected")
+	}
+	row := rows[cursor]
+	if len(row) < 4 {
+		return ""
+	}
+	date, desc, amount, account := row[0], row[1], row[2], row[3]
+	return fmt.Sprintf("  %s  %s  %s  %s",
+		styleLabel.Render(date),
+		styleValue.Render(desc),
+		colorAmount(amount),
+		styleLabel.Render(account),
+	)
+}
+
+// colorAmount renders an amount string green if positive/zero, red if negative.
+func colorAmount(s string) string {
+	if strings.HasPrefix(s, "-") {
+		return styleNegative.Render(s)
+	}
+	return stylePositive.Render(s)
+}
+
+// viewAdd renders the add-transaction form.
+func (m Model) viewAdd() string {
+	var b strings.Builder
+	sep := styleSep.Render(strings.Repeat("─", m.width))
+
+	b.WriteString(sep)
+	b.WriteString("\n\n")
+
+	for i, inp := range m.formInputs {
+		b.WriteString("  ")
+		b.WriteString(inp.View())
+		if i < len(m.formInputs)-1 {
+			b.WriteByte('\n')
+		}
+	}
+
+	b.WriteString("\n\n")
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	b.WriteString(styleFooter.Render(
+		"  [tab] next field  [shift+tab] prev  [enter] save  [esc] cancel",
+	))
+
+	return b.String()
+}
+
+// reportRow holds one line of data for the balance report display.
+type reportRow struct {
+	amt     string // formatted amount string, empty for section headers
+	account string // account name (indented for children) or section heading
+}
+
+// viewReport renders the balance report.
+func (m Model) viewReport() string {
+	var b strings.Builder
+	sep := styleSep.Render(strings.Repeat("─", m.width))
+
+	b.WriteString(sep)
+	b.WriteString("\n\n")
+
+	// Build a sorted, colourised balance list.
+	nodes := m.interpreter.CalculateBalancesTree(Interpreter.Filter{})
+	groups := Interpreter.GroupAccountsByType(nodes)
+
+	order := []string{"assets", "liabilities", "equity", "income", "expenses", "other"}
+
+	// Collect all rows first so we can right-align amounts.
+	var rows []reportRow
+	for _, grp := range order {
+		rootNodes := groups[grp]
+		if len(rootNodes) == 0 {
+			continue
+		}
+		rows = append(rows, reportRow{amt: "", account: strings.ToUpper(grp)})
+		for _, root := range rootNodes {
+			collectReportRows(root, 0, &rows)
+		}
+		rows = append(rows, reportRow{}) // blank separator between sections
+	}
+
+	// Find max amount width for alignment.
+	maxW := 0
+	for _, r := range rows {
+		if len(r.amt) > maxW {
+			maxW = len(r.amt)
+		}
+	}
+
+	for _, r := range rows {
+		if r.amt == "" {
+			// Section header or blank line.
+			if r.account != "" {
+				b.WriteString(styleTitle.Render("  " + r.account))
+			}
+			b.WriteByte('\n')
+			continue
+		}
+		amtStyled := colorAmount(fmt.Sprintf("%*s", maxW, r.amt))
+		b.WriteString(fmt.Sprintf("  %s  %s\n", amtStyled, styleLabel.Render(r.account)))
+	}
+
+	// Footer.
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	b.WriteString(styleFooter.Render(
+		"  [esc] back  [?] help  [q] quit",
+	))
+
+	return b.String()
+}
+
+// collectReportRows recursively appends AccountNodes to rows with indentation.
+func collectReportRows(node *Interpreter.AccountNode, depth int, rows *[]reportRow) {
+	if node.Amount.Value == 0 {
+		return
+	}
+	indent := strings.Repeat("  ", depth)
+	*rows = append(*rows, reportRow{
+		amt:     node.Amount.String(),
+		account: indent + node.Name,
+	})
+	for _, child := range node.Children {
+		collectReportRows(child, depth+1, rows)
+	}
+}
+
+// viewHelp renders the keyboard reference.
+func (m Model) viewHelp() string {
+	var b strings.Builder
+	sep := styleSep.Render(strings.Repeat("─", m.width))
+
+	b.WriteString(sep)
+	b.WriteString("\n\n")
+
+	type entry struct{ key, desc string }
+	sections := []struct {
+		heading string
+		entries []entry
+	}{
+		{"Navigation", []entry{
+			{"↑ / ↓ / j / k", "Move up/down in the transaction list"},
+			{"a", "Open the add-transaction form"},
+			{"r", "Open the balance report"},
+			{"? / h", "Show this help screen"},
+			{"esc", "Go back to the transaction list"},
+			{"q / ctrl+c", "Save and quit"},
+		}},
+		{"Add Transaction Form", []entry{
+			{"tab / ↓", "Move to the next field"},
+			{"shift+tab / ↑", "Move to the previous field"},
+			{"enter", "Save the transaction"},
+			{"esc", "Cancel and go back"},
+		}},
+		{"Journal Files", []entry{
+			{"~/.doublebook/data.journal", "Default journal location"},
+			{"--journal NAME", "Use a different journal stem (CLI flag)"},
+		}},
+	}
+
+	for _, sec := range sections {
+		b.WriteString(styleTitle.Render("  " + sec.heading))
+		b.WriteString("\n\n")
+		for _, e := range sec.entries {
+			b.WriteString(fmt.Sprintf("    %-30s %s\n",
+				styleValue.Render(e.key),
+				styleLabel.Render(e.desc),
+			))
+		}
+		b.WriteByte('\n')
+	}
+
+	b.WriteString(sep)
+	b.WriteByte('\n')
+	b.WriteString(styleFooter.Render("  [esc] back  [q] quit"))
+
+	return b.String()
+}
+
+// ---------------------------------------------------------------------------
+// Table helpers
+// ---------------------------------------------------------------------------
+
+// rebuildTable repopulates the table rows from the in-memory transactions.
+func (m *Model) rebuildTable() {
 	txns := m.interpreter.GetTransactions()
 
 	var rows []table.Row
 	for _, txn := range txns {
-		for _, posting := range txn.Postings {
+		for _, p := range txn.Postings {
 			rows = append(rows, table.Row{
-				txn.Date.Format("2006-01-02"), // col 0: Date
-				txn.Description,               // col 1: Description
-				posting.Amount.String(),       // col 2: Amount
-				posting.Account,               // col 3: Account
+				txn.Date.Format("2006-01-02"),
+				txn.Description,
+				p.Amount.String(),
+				p.Account,
 			})
 		}
 	}
-
 	m.table.SetRows(rows)
 }
 
-func (m Model) View() string {
-	var s strings.Builder
-
-	// Header
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#00ff00")).
-		Background(lipgloss.Color("#1a1a1a")).
-		Padding(0, 1)
-
-	s.WriteString(headerStyle.Render("DoubleBook"))
-	s.WriteString("\n\n")
-
-	// Show any messages
-	if m.message != "" {
-		msgStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#ffff00")).
-			Padding(0, 1)
-		s.WriteString(msgStyle.Render(m.message))
-		s.WriteString("\n\n")
+// resizeTable updates the table height when the terminal is resized.
+// It also widens the Description and Account columns to use available space.
+func (m *Model) resizeTable() {
+	h := m.height - tableChrome
+	if h < minTableHeight {
+		h = minTableHeight
 	}
+	m.table.SetHeight(h)
 
-	// Render current view
-	switch m.currentView {
-	case VIEW_LIST:
-		s.WriteString(m.viewList())
-	case VIEW_ADD:
-		s.WriteString(m.viewAdd())
-	case VIEW_REPORT:
-		s.WriteString(m.viewReport())
-	case VIEW_HELP:
-		s.WriteString(m.viewHelp())
+	// Distribute extra horizontal space.
+	fixed := 12 + 14 + 4 + 3 // Date + Amount + separators
+	remaining := m.width - fixed
+	if remaining < 20 {
+		remaining = 20
 	}
-
-	return s.String()
+	descW := remaining * 55 / 100
+	acctW := remaining - descW
+	if descW < 10 {
+		descW = 10
+	}
+	if acctW < 10 {
+		acctW = 10
+	}
+	m.table.SetColumns([]table.Column{
+		{Title: "Date", Width: 12},
+		{Title: "Description", Width: descW},
+		{Title: "Amount", Width: 14},
+		{Title: "Account", Width: acctW},
+	})
 }
 
-func (m Model) viewList() string {
-	var s strings.Builder
+// ---------------------------------------------------------------------------
+// Form helpers
+// ---------------------------------------------------------------------------
 
-	s.WriteString("Transactions\n")
-	s.WriteString("────────────────────────────────────────────────────────────────────────────\n\n")
-	s.WriteString(m.table.View())
-	s.WriteString("\n\n")
-
-	// Show summary
-	balances := m.interpreter.CalculateBalances()
-	s.WriteString("Account Balances:\n")
-	for account, balance := range balances {
-		s.WriteString(fmt.Sprintf("  %-40s %10.2f\n", account, balance))
-	}
-
-	s.WriteString("\n")
-	s.WriteString("Commands: [a]dd  [r]eport  [?]help  [q]uit\n")
-
-	return s.String()
+// enterAddView switches to VIEW_ADD cleanly: focuses the first field and
+// returns without passing the triggering key to any input.
+func (m Model) enterAddView() (tea.Model, tea.Cmd) {
+	m.currentView = VIEW_ADD
+	m.message = ""
+	m.formFocus = 0
+	m.formInputs[0].SetValue(time.Now().Format("2006-01-02"))
+	return m, m.focusFormField()
 }
 
-func (m Model) viewAdd() string {
-	var s strings.Builder
-
-	s.WriteString("Add New Transaction\n")
-	s.WriteString("────────────────────────────────────────────────────────────────────────────\n\n")
-
-	for i, input := range m.formInputs {
-		s.WriteString(input.View())
-		if i < len(m.formInputs)-1 {
-			s.WriteString("\n")
+// focusFormField focuses the current formFocus index and blurs all others.
+func (m Model) focusFormField() tea.Cmd {
+	cmds := make([]tea.Cmd, len(m.formInputs))
+	for i := range m.formInputs {
+		if i == m.formFocus {
+			cmds[i] = m.formInputs[i].Focus()
+		} else {
+			m.formInputs[i].Blur()
 		}
 	}
-
-	s.WriteString("\n\n")
-	s.WriteString("Commands: [tab]next  [enter]save  [esc]cancel\n")
-
-	return s.String()
+	return tea.Batch(cmds...)
 }
 
-func (m Model) viewReport() string {
-	var s strings.Builder
+// resetForm clears all form inputs and resets to the first field.
+func (m *Model) resetForm() {
+	m.formFocus = 0
+	m.formInputs[0].SetValue(time.Now().Format("2006-01-02"))
+	for i := 1; i < len(m.formInputs); i++ {
+		m.formInputs[i].SetValue("")
+		m.formInputs[i].Blur()
+	}
+	m.formInputs[0].Focus()
+}
 
-	s.WriteString("Financial Reports\n")
-	s.WriteString("────────────────────────────────────────────────────────────────────────────\n\n")
-
-	report := m.interpreter.GenerateBalanceReport()
-	s.WriteString(report)
-
-	// Plugin reportss
-	pluginReports := m.interpreter.GetPluginReports()
-	for _, report := range pluginReports {
-		s.WriteString("\n")
-		s.WriteString(report)
+// submitTransaction reads the form fields and creates a new transaction.
+func (m *Model) submitTransaction() error {
+	date, err := time.Parse("2006-01-02", m.formInputs[0].Value())
+	if err != nil {
+		return fmt.Errorf("invalid date — use YYYY-MM-DD format")
 	}
 
-	s.WriteString("\nCommands: [esc]back\n")
+	desc := strings.TrimSpace(m.formInputs[1].Value())
+	if desc == "" {
+		return fmt.Errorf("description is required")
+	}
 
-	return s.String()
-}
+	debitAcct := strings.TrimSpace(m.formInputs[2].Value())
+	if debitAcct == "" {
+		return fmt.Errorf("debit account is required")
+	}
 
-func (m Model) viewHelp() string {
-	var s strings.Builder
+	amtStr := strings.TrimSpace(m.formInputs[3].Value())
+	amount, err := utils.ParseAmount(amtStr)
+	if err != nil {
+		return fmt.Errorf("invalid amount — try $45.32 or 45.32")
+	}
 
-	s.WriteString("Help\n")
-	s.WriteString("────────────────────────────────────────────────────────────────────────────\n\n")
+	creditAcct := strings.TrimSpace(m.formInputs[4].Value())
+	if creditAcct == "" {
+		return fmt.Errorf("credit account is required")
+	}
 
-	s.WriteString("DoubleBook is a double-entry accounting system.\n\n")
+	txn := AST.NewTransaction(date, desc)
+	txn.Postings = append(txn.Postings,
+		AST.NewPosting(debitAcct, amount),
+		AST.NewPosting(creditAcct, amount.Negate()),
+	)
 
-	s.WriteString("Key Concepts:\n")
-	s.WriteString("  • Every transaction has at least 2 postings that balance to zero\n")
-	s.WriteString("  • Positive amounts are debits, negative amounts are credits\n")
-	s.WriteString("  • Transactions are stored in plain text files\n\n")
-
-	s.WriteString("Keyboard Shortcuts:\n")
-	s.WriteString("  a       - Add new transaction\n")
-	s.WriteString("  r       - View reports\n")
-	s.WriteString("  ?       - Show this help\n")
-	s.WriteString("  q       - Quit (and save)\n")
-	s.WriteString("  esc     - Go back\n")
-	s.WriteString("  tab     - Navigate form fields\n\n")
-
-	s.WriteString("File Format:\n")
-	s.WriteString("  2024-01-15 Grocery Store\n")
-	s.WriteString("      expenses:groceries        $45.32\n")
-	s.WriteString("      assets:checking          -$45.32\n\n")
-
-	s.WriteString("Config: ~/.doublebook/config.yaml\n")
-
-	s.WriteString("Commands: [esc]back\n")
-
-	return s.String()
+	if err := m.interpreter.AddTransaction(txn); err != nil {
+		return err
+	}
+	return m.interpreter.SaveToFile(m.config.DataFile)
 }

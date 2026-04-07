@@ -27,6 +27,8 @@ func Run(args []string) error {
 	cmdArgs := remaining[1:]
 
 	switch command {
+	case "balance", "bal":
+		return commands.BalanceCommand(ctx, cmdArgs)
 	case "add":
 		return commands.AddCommand(ctx, cmdArgs)
 	case "list", "ls":
