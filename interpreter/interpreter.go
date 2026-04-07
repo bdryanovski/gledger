@@ -149,6 +149,11 @@ func (i *Interpreter) GetTransactions() []*AST.Transaction {
 	return i.transactions
 }
 
+// GetConfig returns the interpreter's loaded configuration.
+func (i *Interpreter) GetConfig() *config.Config {
+	return i.config
+}
+
 // ---------------------------------------------------------------------------
 // Filter
 // ---------------------------------------------------------------------------
