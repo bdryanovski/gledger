@@ -1,7 +1,7 @@
 package TemplatePlugin
 
 import (
-	AST "gledger/ast"
+	AST "doublebook/ast"
 	"strings"
 )
 

@@ -1,11 +1,11 @@
 package UI
 
 import (
+	AST "doublebook/ast"
+	"doublebook/config"
+	Interpreter "doublebook/interpreter"
+	"doublebook/utils"
 	"fmt"
-	AST "gledger/ast"
-	"gledger/config"
-	Interpreter "gledger/interpreter"
-	"gledger/utils"
 	"strings"
 	"time"
 
@@ -321,7 +321,7 @@ func (m Model) View() string {
 		Background(lipgloss.Color("#1a1a1a")).
 		Padding(0, 1)
 
-	s.WriteString(headerStyle.Render("GLedger"))
+	s.WriteString(headerStyle.Render("DoubleBook"))
 	s.WriteString("\n\n")
 
 	// Show any messages
@@ -415,7 +415,7 @@ func (m Model) viewHelp() string {
 	s.WriteString("Help\n")
 	s.WriteString("────────────────────────────────────────────────────────────────────────────\n\n")
 
-	s.WriteString("FinTrack is a double-entry accounting system.\n\n")
+	s.WriteString("DoubleBook is a double-entry accounting system.\n\n")
 
 	s.WriteString("Key Concepts:\n")
 	s.WriteString("  • Every transaction has at least 2 postings that balance to zero\n")
@@ -435,7 +435,7 @@ func (m Model) viewHelp() string {
 	s.WriteString("      expenses:groceries        $45.32\n")
 	s.WriteString("      assets:checking          -$45.32\n\n")
 
-	s.WriteString("Config: ~/.fintrack/config.yaml\n")
+	s.WriteString("Config: ~/.doublebook/config.yaml\n")
 
 	s.WriteString("Commands: [esc]back\n")
 

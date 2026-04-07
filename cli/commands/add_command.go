@@ -1,11 +1,11 @@
 package commands
 
 import (
+	AST "doublebook/ast"
+	"doublebook/config"
+	Interpreter "doublebook/interpreter"
 	"flag"
 	"fmt"
-	AST "gledger/ast"
-	"gledger/config"
-	Interpreter "gledger/interpreter"
 	"time"
 )
 

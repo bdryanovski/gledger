@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"doublebook/cli/commands"
 	"fmt"
-	"gledger/cli/commands"
 )
 
 func Run(args []string) error {
@@ -29,7 +29,7 @@ func Run(args []string) error {
 
 func runHelp(args []string) error {
 	help := `
-	Usage: gledger [command] [options]
+	Usage: doublebook [command] [options]
 	`
 
 	fmt.Println(help)
@@ -40,7 +40,7 @@ func runHelp(args []string) error {
 func runVersion(args []string) error {
 	version := "0.1.0"
 
-	fmt.Printf("gledger version %s\n", version)
+	fmt.Printf("doublebook version %s\n", version)
 
 	return nil
 }

@@ -1,10 +1,10 @@
 package Parser
 
 import (
+	AST "doublebook/ast"
+	"doublebook/lexer"
+	"doublebook/utils"
 	"fmt"
-	AST "gledger/ast"
-	"gledger/lexer"
-	"gledger/utils"
 	"time"
 )
 

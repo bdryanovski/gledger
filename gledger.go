@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	cli "gledger/cli"
-	UI "gledger/ui"
+	cli "doublebook/cli"
+	UI "doublebook/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

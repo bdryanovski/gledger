@@ -1,8 +1,8 @@
 package Plugin
 
 import (
+	"doublebook/ast"
 	"fmt"
-	"gledger/ast"
 )
 
 type Plugin interface {

@@ -1,7 +1,7 @@
 package lexer
 
 import (
-	AST "gledger/ast"
+	AST "doublebook/ast"
 	"strings"
 )
 

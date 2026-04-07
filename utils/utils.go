@@ -1,7 +1,7 @@
 package utils
 
 import (
-	AST "gledger/ast"
+	AST "doublebook/ast"
 	"os"
 	"path/filepath"
 	"strconv"

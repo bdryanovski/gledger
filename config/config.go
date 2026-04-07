@@ -25,16 +25,18 @@ type ThemeConfig struct {
 
 func DefaultConfig() *Config {
 	return &Config{
-		DataFile:   "~/.gledger/data.txt",
+		DataFile:   "~/.doublebook/data.journal",
 		DateFormat: "2006-01-02",
 		Currency:   "USD",
 		Aliases: map[string]string{
-			"exp": "expenses",
-			"inc": "income",
-			"ast": "assets",
+			"exp":  "expenses",
+			"inc":  "income",
+			"ast":  "assets",
+			"liab": "liabilities",
+			"eq":   "equity",
 		},
 		Theme: ThemeConfig{
-			PrimaryColor:     "#00ff00",
+			PrimaryColor:     "#7C3AED",
 			TableBorderStyle: "rounded",
 		},
 	}
@@ -47,7 +49,7 @@ func LoadConfig() (*Config, error) {
 		return DefaultConfig(), nil
 	}
 
-	configPath := home + "/.gledger/config.yaml"
+	configPath := home + "/.doublebook/config.yaml"
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -74,7 +76,7 @@ func (config *Config) Save() error {
 		return err
 	}
 
-	configDirectory := filepath.Join(home, ".gledger")
+	configDirectory := filepath.Join(home, ".doublebook")
 	if err := os.MkdirAll(configDirectory, 0755); err != nil {
 		return err
 	}

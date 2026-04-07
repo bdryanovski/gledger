@@ -1,6 +1,6 @@
 # Change these variables as necessary.
 main_package_path = ./
-binary_name = gledger
+binary_name = doublebook
 
 # ==================================================================================== #
 # HELPERS

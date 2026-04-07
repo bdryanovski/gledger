@@ -1,12 +1,12 @@
 package Interpreter
 
 import (
+	AST "doublebook/ast"
+	"doublebook/config"
+	Parser "doublebook/parser"
+	Plugin "doublebook/plugin"
+	TemplatePlugin "doublebook/plugin/extentions"
 	"fmt"
-	AST "gledger/ast"
-	"gledger/config"
-	Parser "gledger/parser"
-	Plugin "gledger/plugin"
-	TemplatePlugin "gledger/plugin/extentions"
 	"os"
 	"path/filepath"
 	"sort"
