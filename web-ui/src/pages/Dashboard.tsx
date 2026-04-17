@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useAppConfig } from "../api/AppConfig";
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ function StatCard({
 }
 
 export default function Dashboard() {
+  const { credit_normal_prefixes } = useAppConfig();
   const { data: accounts } = useQuery({
     queryKey: ["accounts"],
     queryFn: api.getAccounts,
@@ -153,11 +155,11 @@ export default function Dashboard() {
                     <td className="px-4 py-2.5 text-blue-600 font-mono text-xs">
                       {p.account}
                     </td>
-                    <td
-                      className={`px-4 py-2.5 text-right font-mono text-xs font-medium ${amountColor(p.amount)}`}
-                    >
-                      {formatCurrency(p.amount, p.currency)}
-                    </td>
+                      <td
+                        className={`px-4 py-2.5 text-right font-mono text-xs font-medium ${amountColor(p.amount, p.account, credit_normal_prefixes)}`}
+                      >
+                        {formatCurrency(p.amount, p.currency)}
+                      </td>
                   </tr>
                 ))
               )}

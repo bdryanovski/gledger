@@ -49,4 +49,11 @@ export const api = {
     }),
 
   getHealth: () => fetchJSON<{ status: string; version: string }>("/health"),
+
+  getAppConfig: () =>
+    fetchJSON<{
+      currency: string;
+      credit_normal_prefixes: string[];
+      date_format: string;
+    }>("/config"),
 };

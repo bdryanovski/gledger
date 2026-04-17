@@ -82,6 +82,14 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, http.StatusOK, map[string]string{"status": "ok", "version": "0.1.0"})
 	})
+	s.mux.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		cfg := s.interp.GetConfig()
+		respond(w, http.StatusOK, map[string]interface{}{
+			"currency":               cfg.Currency,
+			"credit_normal_prefixes": cfg.CreditNormalPrefixes,
+			"date_format":            cfg.DateFormat,
+		})
+	})
 }
 
 // ---------------------------------------------------------------------------

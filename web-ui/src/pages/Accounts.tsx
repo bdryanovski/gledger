@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { useAppConfig } from "../api/AppConfig";
 import { formatCurrency, amountColor } from "../utils/format";
 
 const TYPE_ORDER = ["assets", "liabilities", "equity", "income", "expenses", "other"];
@@ -9,6 +10,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function Accounts() {
+  const { credit_normal_prefixes } = useAppConfig();
   const { data, isLoading } = useQuery({
     queryKey: ["accounts"],
     queryFn: api.getAccounts,
@@ -38,7 +40,7 @@ export default function Accounts() {
           <div key={type} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
               <h2 className="font-semibold text-gray-800">{TYPE_LABELS[type]}</h2>
-              <span className={`text-sm font-mono font-semibold ${amountColor(total)}`}>
+              <span className={`text-sm font-mono font-semibold ${amountColor(total, type, credit_normal_prefixes)}`}>
                 {formatCurrency(total)}
               </span>
             </div>
@@ -49,7 +51,7 @@ export default function Accounts() {
                     <td className="px-5 py-3 text-blue-700 font-mono text-xs">
                       {a.name}
                     </td>
-                    <td className={`px-5 py-3 text-right font-mono text-sm font-semibold ${amountColor(a.balance)}`}>
+                    <td className={`px-5 py-3 text-right font-mono text-sm font-semibold ${amountColor(a.balance, a.name, credit_normal_prefixes)}`}>
                       {formatCurrency(a.balance, a.currency)}
                     </td>
                   </tr>

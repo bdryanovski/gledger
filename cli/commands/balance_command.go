@@ -8,7 +8,33 @@ import (
 
 	"doublebook/config"
 	Interpreter "doublebook/interpreter"
+	"doublebook/utils"
+
+	"github.com/charmbracelet/lipgloss"
 )
+
+// Account-aware color styles.
+var (
+	balStylePos = lipgloss.NewStyle().Foreground(lipgloss.Color("71"))  // green
+	balStyleNeg = lipgloss.NewStyle().Foreground(lipgloss.Color("203")) // red
+)
+
+// isHealthyBalance returns true when value has the "healthy" sign for the
+// account type, using the credit-normal prefixes from config.
+func isHealthyBalance(account string, value float64, creditPrefixes []string) bool {
+	if utils.IsAccountCreditNormal(account, creditPrefixes) {
+		return value <= 0
+	}
+	return value >= 0
+}
+
+// colorBalanceAmount wraps s in the appropriate lipgloss colour for the account.
+func colorBalanceAmount(s, account string, value float64, creditPrefixes []string) string {
+	if isHealthyBalance(account, value, creditPrefixes) {
+		return balStylePos.Render(s)
+	}
+	return balStyleNeg.Render(s)
+}
 
 // BalanceCommand prints account balances, either as a flat sorted list or as
 // an indented account hierarchy.
@@ -53,10 +79,11 @@ func BalanceCommand(ctx *config.CLIContext, args []string) error {
 
 	accountFilter := *accountFlag
 
+	cp := ctx.Config.CreditNormalPrefixes
 	if *treeMode {
-		return printTreeBalance(interp, filter, accountFilter, *noTotal, ctx.Config.Currency)
+		return printTreeBalance(interp, filter, accountFilter, *noTotal, ctx.Config.Currency, cp)
 	}
-	return printFlatBalance(interp, filter, accountFilter, *noTotal, ctx.Config.Currency)
+	return printFlatBalance(interp, filter, accountFilter, *noTotal, ctx.Config.Currency, cp)
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +96,7 @@ func printFlatBalance(
 	accountFilter string,
 	noTotal bool,
 	currency string,
+	creditPrefixes []string,
 ) error {
 	// Compute per-account balances using filtered transactions.
 	txns := interp.FilteredTransactions(filter)
@@ -132,15 +160,21 @@ func printFlatBalance(
 		maxW = len(totalStr)
 	}
 
-	// Render.
+	// Render with account-type-aware colour.
 	for _, r := range rows {
-		fmt.Printf("%*s  %s\n", maxW, r.amtStr, r.account)
+		colored := colorBalanceAmount(fmt.Sprintf("%*s", maxW, r.amtStr), r.account, balances[r.account], creditPrefixes)
+		fmt.Printf("%s  %s\n", colored, r.account)
 	}
 
 	if !noTotal {
 		sep := strings.Repeat("─", maxW+2+20)
 		fmt.Println(sep)
-		fmt.Printf("%*s\n", maxW, totalStr)
+		// Total: green if zero/near-zero (balanced), red if not.
+		totalColored := balStylePos.Render(fmt.Sprintf("%*s", maxW, totalStr))
+		if grandTotal > 0.01 || grandTotal < -0.01 {
+			totalColored = balStyleNeg.Render(fmt.Sprintf("%*s", maxW, totalStr))
+		}
+		fmt.Println(totalColored)
 	}
 
 	return nil
@@ -156,6 +190,7 @@ type treeRow struct {
 	name   string // short name (last component)
 	full   string // full account path
 	amtStr string
+	rawVal float64 // raw value for colour decisions
 }
 
 func printTreeBalance(
@@ -164,6 +199,7 @@ func printTreeBalance(
 	accountFilter string,
 	noTotal bool,
 	currency string,
+	creditPrefixes []string,
 ) error {
 	nodes := interp.CalculateBalancesTree(filter)
 	groups := Interpreter.GroupAccountsByType(nodes)
@@ -207,16 +243,21 @@ func printTreeBalance(
 		maxW = len(totalStr)
 	}
 
-	// Second pass: render with consistent alignment.
+	// Second pass: render with account-type-aware colour.
 	for _, r := range rows {
 		indent := strings.Repeat("  ", r.depth)
-		fmt.Printf("%*s  %s%s\n", maxW, r.amtStr, indent, r.name)
+		colored := colorBalanceAmount(fmt.Sprintf("%*s", maxW, r.amtStr), r.full, nodeValue(r), creditPrefixes)
+		fmt.Printf("%s  %s%s\n", colored, indent, r.name)
 	}
 
 	if !noTotal {
 		sep := strings.Repeat("─", maxW+2+20)
 		fmt.Println(sep)
-		fmt.Printf("%*s\n", maxW, totalStr)
+		totalColored := balStylePos.Render(fmt.Sprintf("%*s", maxW, totalStr))
+		if grandTotal > 0.01 || grandTotal < -0.01 {
+			totalColored = balStyleNeg.Render(fmt.Sprintf("%*s", maxW, totalStr))
+		}
+		fmt.Println(totalColored)
 	}
 
 	return nil
@@ -232,11 +273,14 @@ func collectTreeRows(node *Interpreter.AccountNode, depth int, rows *[]treeRow) 
 		name:   node.Name,
 		full:   node.FullName,
 		amtStr: node.Amount.String(),
+		rawVal: node.Amount.Value,
 	})
 	for _, child := range node.Children {
 		collectTreeRows(child, depth+1, rows)
 	}
 }
+
+func nodeValue(r treeRow) float64 { return r.rawVal }
 
 // ---------------------------------------------------------------------------
 // Helpers

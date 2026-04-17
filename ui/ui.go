@@ -409,17 +409,30 @@ func (m Model) selectedDetail() string {
 	return fmt.Sprintf("  %s  %s  %s  %s",
 		styleLabel.Render(date),
 		styleValue.Render(desc),
-		colorAmount(amount),
+		colorAmountForAccount(amount, account, m.config.CreditNormalPrefixes),
 		styleLabel.Render(account),
 	)
 }
 
-// colorAmount renders an amount string green if positive/zero, red if negative.
+// colorAmount renders an amount string using sign-based coloring.
+// For plain amounts (no account context), negative = red, positive = green.
 func colorAmount(s string) string {
 	if strings.HasPrefix(s, "-") {
 		return styleNegative.Render(s)
 	}
 	return stylePositive.Render(s)
+}
+
+// colorAmountForAccount colors an amount based on account type using the
+// credit-normal prefixes from config — no hardcoded account names.
+func colorAmountForAccount(s, account string, creditPrefixes []string) string {
+	creditNormal := utils.IsAccountCreditNormal(account, creditPrefixes)
+	isNeg := strings.HasPrefix(s, "-")
+	healthy := (!isNeg && !creditNormal) || (isNeg && creditNormal)
+	if healthy {
+		return stylePositive.Render(s)
+	}
+	return styleNegative.Render(s)
 }
 
 // viewAdd renders the add-transaction form.
@@ -499,7 +512,7 @@ func (m Model) viewReport() string {
 			b.WriteByte('\n')
 			continue
 		}
-		amtStyled := colorAmount(fmt.Sprintf("%*s", maxW, r.amt))
+		amtStyled := colorAmountForAccount(fmt.Sprintf("%*s", maxW, r.amt), r.account, m.config.CreditNormalPrefixes)
 		b.WriteString(fmt.Sprintf("  %s  %s\n", amtStyled, styleLabel.Render(r.account)))
 	}
 

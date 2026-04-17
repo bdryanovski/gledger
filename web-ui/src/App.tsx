@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AppConfigProvider } from "./api/AppConfig";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Accounts from "./pages/Accounts";
@@ -21,6 +22,7 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <AppConfigProvider>
       <BrowserRouter>
         <div className="flex h-screen bg-gray-50 overflow-hidden">
           {/* Sidebar */}
@@ -69,6 +71,7 @@ export default function App() {
           </main>
         </div>
       </BrowserRouter>
+      </AppConfigProvider>
     </QueryClientProvider>
   );
 }

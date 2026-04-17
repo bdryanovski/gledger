@@ -35,6 +35,16 @@ type Config struct {
 
 	// Plugin names to auto-load on startup
 	Plugins []string `yaml:"plugins"`
+
+	// CreditNormalPrefixes lists account name prefixes whose balances are
+	// "healthy" (shown green) when NEGATIVE. All other accounts are treated
+	// as debit-normal (healthy when positive).
+	//
+	// Edit this list to support non-English account names, custom conventions,
+	// or additional account types without rebuilding the binary.
+	//
+	// Default: ["income", "liabilities", "equity"]
+	CreditNormalPrefixes []string `yaml:"credit_normal_prefixes"`
 }
 
 // ThemeConfig holds visual styling preferences.
@@ -65,6 +75,13 @@ func DefaultConfig() *Config {
 		Theme: ThemeConfig{
 			PrimaryColor: "#7C3AED",
 			BorderStyle:  "rounded",
+		},
+		CreditNormalPrefixes: []string{
+			"income",
+			"liabilities",
+			"equity",
+			"revenue",  // common alternative to "income"
+			"revenues", // plural form
 		},
 	}
 }
@@ -116,6 +133,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.Currency == "" {
 		cfg.Currency = "USD"
+	}
+	if len(cfg.CreditNormalPrefixes) == 0 {
+		cfg.CreditNormalPrefixes = []string{"income", "liabilities", "equity", "revenue", "revenues"}
 	}
 
 	return &cfg, nil

@@ -81,6 +81,28 @@ func ParseAmount(s string) (AST.Amount, error) {
 	return AST.Amount{Value: value, Currency: currency}, nil
 }
 
+// IsAccountCreditNormal returns true when account is a credit-normal account
+// (healthy / "green" when its balance is negative) according to the given
+// prefix list.  Comparison is case-insensitive.
+//
+// Credit-normal accounts in standard double-entry:
+//
+//	income, liabilities, equity — balances are credits (negative)
+//
+// The prefix list comes from config.Config.CreditNormalPrefixes so users can
+// extend it in ~/.doublebook/config.yaml without rebuilding the binary.
+func IsAccountCreditNormal(account string, creditPrefixes []string) bool {
+	lower := strings.ToLower(strings.TrimSpace(account))
+	for _, prefix := range creditPrefixes {
+		p := strings.ToLower(strings.TrimSpace(prefix))
+		// Match "income" against "income:salary" OR "income" exactly.
+		if lower == p || strings.HasPrefix(lower, p+":") || strings.HasPrefix(lower, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
 // isUpperAlpha returns true if every character in s is an ASCII uppercase letter.
 func isUpperAlpha(s string) bool {
 	for _, r := range s {
