@@ -1,4 +1,4 @@
-package UI
+package ui
 
 import (
 	"crypto/sha256"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/utils"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -73,7 +73,7 @@ type InsertModel struct {
 	// Result
 	done    bool
 	aborted bool
-	result  *AST.Transaction
+	result  *ast.Transaction
 
 	defaultCurrency string
 }
@@ -125,7 +125,7 @@ func NewInsertModel(accounts, currencies []string, defaultCurrency string) Inser
 func (m InsertModel) Aborted() bool { return m.aborted }
 
 // Result returns the built transaction, or nil if not yet submitted.
-func (m InsertModel) Result() *AST.Transaction { return m.result }
+func (m InsertModel) Result() *ast.Transaction { return m.result }
 
 // ---------------------------------------------------------------------------
 // Bubbletea interface
@@ -323,11 +323,11 @@ func (m InsertModel) trySubmit() (tea.Model, tea.Cmd) {
 		amount, _ = utils.ParseAmount(amtStr + " " + curr)
 	}
 
-	txn := AST.NewTransaction(date, desc)
+	txn := ast.NewTransaction(date, desc)
 	txn.ID = generateInsertID(dateStr, desc, acct1, amtStr)
 	txn.Postings = append(txn.Postings,
-		AST.NewPosting(acct1, amount),
-		AST.NewPosting(acct2, amount.Negate()),
+		ast.NewPosting(acct1, amount),
+		ast.NewPosting(acct2, amount.Negate()),
 	)
 
 	// Parse tags.

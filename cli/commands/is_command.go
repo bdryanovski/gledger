@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 )
 
 // ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ func ISCommand(ctx *config.CLIContext, args []string) error {
 		endDate = d
 	}
 
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		return fmt.Errorf("loading journal: %w", err)
 	}
@@ -101,12 +101,12 @@ func detectPeriod(daily, weekly, monthly, yearly bool, begin, end string) string
 // ---------------------------------------------------------------------------
 
 func printSimpleIS(
-	interp *Interpreter.Interpreter,
+	interp *interpreter.Interpreter,
 	beginDate, endDate string,
 	noTotal bool,
 	currency string,
 ) error {
-	filter := Interpreter.Filter{BeginDate: beginDate, EndDate: endDate}
+	filter := interpreter.Filter{BeginDate: beginDate, EndDate: endDate}
 	stmt := interp.GenerateIncomeStatement(filter)
 
 	// Title.
@@ -157,8 +157,8 @@ func printSimpleIS(
 	return nil
 }
 
-// sortedAmountKeys returns the sorted keys of a map[string]AST.Amount.
-func sortedAmountKeys(m map[string]AST.Amount) []string {
+// sortedAmountKeys returns the sorted keys of a map[string]ast.Amount.
+func sortedAmountKeys(m map[string]ast.Amount) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
@@ -251,14 +251,14 @@ func periodDateRange(label, period string) (string, string) {
 }
 
 func printPrettyIS(
-	interp *Interpreter.Interpreter,
+	interp *interpreter.Interpreter,
 	beginDate, endDate, period string,
 	showTotal, showAverage, noTotal bool,
 	currency string,
 ) error {
 	// If no date range given, fill from the journal's actual extent.
 	if beginDate == "" || endDate == "" {
-		txns := interp.FilteredTransactions(Interpreter.Filter{})
+		txns := interp.FilteredTransactions(interpreter.Filter{})
 		if len(txns) > 0 {
 			if beginDate == "" {
 				beginDate = txns[0].Date.Format("2006-01-02")
@@ -301,7 +301,7 @@ func printPrettyIS(
 			pb = beginDate
 			pe = endDate
 		}
-		f := Interpreter.Filter{BeginDate: pb, EndDate: pe}
+		f := interpreter.Filter{BeginDate: pb, EndDate: pe}
 		stmt := interp.GenerateIncomeStatement(f)
 		pd := &periodIS{
 			revenues: make(map[string]float64),

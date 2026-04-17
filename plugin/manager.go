@@ -1,10 +1,10 @@
-package Plugin
+package plugin
 
 import (
 	"fmt"
 	"strings"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // ---------------------------------------------------------------------------
@@ -85,9 +85,9 @@ func (pm *PluginManager) ShutdownAll() error {
 // ---------------------------------------------------------------------------
 
 // ExecuteOnParse calls OnParse on every plugin with all loaded transactions.
-func (pm *PluginManager) ExecuteOnParse(txn *AST.Transaction) error {
+func (pm *PluginManager) ExecuteOnParse(txn *ast.Transaction) error {
 	for _, p := range pm.plugins {
-		if err := p.OnParse([]*AST.Transaction{txn}); err != nil {
+		if err := p.OnParse([]*ast.Transaction{txn}); err != nil {
 			return fmt.Errorf("plugin %q OnParse: %w", p.Name(), err)
 		}
 	}
@@ -95,7 +95,7 @@ func (pm *PluginManager) ExecuteOnParse(txn *AST.Transaction) error {
 }
 
 // ExecuteOnAdd calls OnAdd on every plugin for a newly added transaction.
-func (pm *PluginManager) ExecuteOnAdd(txn *AST.Transaction) error {
+func (pm *PluginManager) ExecuteOnAdd(txn *ast.Transaction) error {
 	for _, p := range pm.plugins {
 		if err := p.OnAdd(txn); err != nil {
 			return fmt.Errorf("plugin %q OnAdd: %w", p.Name(), err)
@@ -106,7 +106,7 @@ func (pm *PluginManager) ExecuteOnAdd(txn *AST.Transaction) error {
 
 // ExecuteOnFilter pipes transactions through each plugin's OnFilter in order.
 // Each plugin receives the output of the previous one.
-func (pm *PluginManager) ExecuteOnFilter(txns []*AST.Transaction) []*AST.Transaction {
+func (pm *PluginManager) ExecuteOnFilter(txns []*ast.Transaction) []*ast.Transaction {
 	result := txns
 	for _, p := range pm.plugins {
 		result = p.OnFilter(result)
@@ -115,7 +115,7 @@ func (pm *PluginManager) ExecuteOnFilter(txns []*AST.Transaction) []*AST.Transac
 }
 
 // ExecuteOnReport collects non-empty OnReport strings from all plugins.
-func (pm *PluginManager) ExecuteOnReport(txns []*AST.Transaction) []string {
+func (pm *PluginManager) ExecuteOnReport(txns []*ast.Transaction) []string {
 	var out []string
 	for _, p := range pm.plugins {
 		if s := p.OnReport(txns); s != "" {

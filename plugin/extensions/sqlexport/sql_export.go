@@ -6,16 +6,16 @@ import (
 	"flag"
 	"fmt"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/db"
-	Plugin "doublebook/plugin"
+	"doublebook/plugin"
 )
 
 // SQLExportPlugin exports the journal to a standalone SQLite database file.
 // The exported file can be queried with any SQL tool (sqlite3, DBeaver, etc.)
 // and includes convenience views for common queries.
 type SQLExportPlugin struct {
-	Plugin.DefaultPlugin
+	plugin.DefaultPlugin
 	OutputPath string
 }
 
@@ -35,7 +35,7 @@ func (p *SQLExportPlugin) Initialize(config map[string]interface{}) error {
 }
 
 // RunCommand handles: doublebook plugin run sql-export [--output path]
-func (p *SQLExportPlugin) RunCommand(transactions []*AST.Transaction, args []string) error {
+func (p *SQLExportPlugin) RunCommand(transactions []*ast.Transaction, args []string) error {
 	fs := flag.NewFlagSet("sql-export", flag.ContinueOnError)
 	outputFlag := fs.String("output", "", "Output SQLite file path (default: doublebook-export.db)")
 	if err := fs.Parse(args); err != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -64,12 +64,12 @@ func RegisterCommand(ctx *config.CLIContext, args []string) error {
 		endDate = d
 	}
 
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		return fmt.Errorf("loading journal: %w", err)
 	}
 
-	filter := Interpreter.Filter{
+	filter := interpreter.Filter{
 		BeginDate:   beginDate,
 		EndDate:     endDate,
 		Description: *descFlag,

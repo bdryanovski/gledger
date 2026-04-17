@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
@@ -23,7 +23,7 @@ import (
 
 // ImportResult summarises a completed CSV import operation.
 type ImportResult struct {
-	Imported  []*AST.Transaction // new transactions to append to the journal
+	Imported  []*ast.Transaction // new transactions to append to the journal
 	Skipped   int                // rows already present (by ID) — not re-imported
 	Errors    []ImportError      // non-fatal row-level parse problems
 	TotalRows int                // total data rows examined (header lines excluded)
@@ -144,7 +144,7 @@ func processRow(
 	imap *ImportMap,
 	existingIDs map[string]bool,
 	seenInFile map[string]bool,
-) (*AST.Transaction, bool, error) {
+) (*ast.Transaction, bool, error) {
 
 	col := func(idx int) string {
 		if idx < 0 || idx >= len(row) {
@@ -233,19 +233,19 @@ func processRow(
 	// Build the balanced transaction.
 	//   debit  (money out): source −amount, debitAcct  +amount
 	//   credit (money in):  source +amount, creditAcct −amount
-	txn := AST.NewTransaction(date, description)
+	txn := ast.NewTransaction(date, description)
 	txn.ID = id
 	txn.Tags = tags
 
 	if isCredit {
 		txn.Postings = append(txn.Postings,
-			AST.NewPosting(imap.SourceAccount, AST.Amount{Value: amountValue, Currency: currency}),
-			AST.NewPosting(creditAcct, AST.Amount{Value: -amountValue, Currency: currency}),
+			ast.NewPosting(imap.SourceAccount, ast.Amount{Value: amountValue, Currency: currency}),
+			ast.NewPosting(creditAcct, ast.Amount{Value: -amountValue, Currency: currency}),
 		)
 	} else {
 		txn.Postings = append(txn.Postings,
-			AST.NewPosting(imap.SourceAccount, AST.Amount{Value: -amountValue, Currency: currency}),
-			AST.NewPosting(debitAcct, AST.Amount{Value: amountValue, Currency: currency}),
+			ast.NewPosting(imap.SourceAccount, ast.Amount{Value: -amountValue, Currency: currency}),
+			ast.NewPosting(debitAcct, ast.Amount{Value: amountValue, Currency: currency}),
 		)
 	}
 

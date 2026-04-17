@@ -8,7 +8,7 @@ import (
 
 	"doublebook/config"
 	"doublebook/importer"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/journal"
 )
 
@@ -47,7 +47,7 @@ func ImportCommand(ctx *config.CLIContext, args []string) error {
 	}
 
 	// Load the existing journal to build the deduplication ID set.
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		// Non-fatal: warn but continue. Without existing IDs we may re-import
 		// entries, but the user can fix their journal and re-run with --dry-run.

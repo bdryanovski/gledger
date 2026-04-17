@@ -1,7 +1,7 @@
 package utils
 
 import (
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// ParseAmount parses an amount string into an AST.Amount, detecting the currency
+// ParseAmount parses an amount string into an ast.Amount, detecting the currency
 // from the symbol prefix or trailing 3-letter code.
 //
 // Supported formats:
@@ -23,10 +23,10 @@ import (
 //	BGN 100        → BGN  100.0
 //	45.32          → USD  45.32  (default)
 //	1,234.56       → USD  1234.56 (commas stripped)
-func ParseAmount(s string) (AST.Amount, error) {
+func ParseAmount(s string) (ast.Amount, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return AST.Amount{}, fmt.Errorf("empty amount string")
+		return ast.Amount{}, fmt.Errorf("empty amount string")
 	}
 
 	currency := "USD"
@@ -75,10 +75,10 @@ func ParseAmount(s string) (AST.Amount, error) {
 
 	value, err := strconv.ParseFloat(s, 64)
 	if err != nil {
-		return AST.Amount{}, fmt.Errorf("invalid amount %q: %v", s, err)
+		return ast.Amount{}, fmt.Errorf("invalid amount %q: %v", s, err)
 	}
 
-	return AST.Amount{Value: value, Currency: currency}, nil
+	return ast.Amount{Value: value, Currency: currency}, nil
 }
 
 // IsAccountCreditNormal returns true when account is a credit-normal account

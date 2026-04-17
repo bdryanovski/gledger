@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/utils"
 )
 
@@ -29,7 +29,7 @@ const MaxJournalSize = 1 * 1024 * 1024 // 1 MB
 //	…
 //
 // The data directory is created automatically when it does not exist.
-func AppendTransaction(name string, dataDir string, txn *AST.Transaction) error {
+func AppendTransaction(name string, dataDir string, txn *ast.Transaction) error {
 	dataDir = utils.ExpandHome(dataDir)
 
 	// Ensure the data directory exists.
@@ -105,7 +105,7 @@ func nextOverflowPath(prefix string, existing []string) string {
 //
 // This is intended for in-place rewrites (e.g. after re-sorting).  It does
 // NOT perform size splitting — for appending use AppendTransaction instead.
-func WriteAll(path string, transactions []*AST.Transaction) error {
+func WriteAll(path string, transactions []*ast.Transaction) error {
 	path = utils.ExpandHome(path)
 
 	// Build the full content.

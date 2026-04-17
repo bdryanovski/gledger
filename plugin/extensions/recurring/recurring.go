@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
-	Plugin "doublebook/plugin"
+	"doublebook/ast"
+	"doublebook/plugin"
 	"doublebook/utils"
 )
 
@@ -51,7 +51,7 @@ type RecurringConfig struct {
 
 // RecurringPlugin manages recurring payment schedules.
 type RecurringPlugin struct {
-	Plugin.DefaultPlugin
+	plugin.DefaultPlugin
 	configPath string
 	config     *RecurringConfig
 }
@@ -92,7 +92,7 @@ func (p *RecurringPlugin) loadConfig() error {
 }
 
 // OnReport appends the recurring summary to any report that uses plugins.
-func (p *RecurringPlugin) OnReport(transactions []*AST.Transaction) string {
+func (p *RecurringPlugin) OnReport(transactions []*ast.Transaction) string {
 	if p.config == nil || len(p.config.Schedules) == 0 {
 		return ""
 	}
@@ -116,7 +116,7 @@ func (p *RecurringPlugin) OnReport(transactions []*AST.Transaction) string {
 }
 
 // RunCommand handles: doublebook plugin run recurring [status|list|generate]
-func (p *RecurringPlugin) RunCommand(transactions []*AST.Transaction, args []string) error {
+func (p *RecurringPlugin) RunCommand(transactions []*ast.Transaction, args []string) error {
 	fs := flag.NewFlagSet("recurring", flag.ContinueOnError)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -175,7 +175,7 @@ func (p *RecurringPlugin) cmdList() error {
 	return nil
 }
 
-func (p *RecurringPlugin) cmdStatus(transactions []*AST.Transaction) error {
+func (p *RecurringPlugin) cmdStatus(transactions []*ast.Transaction) error {
 	if len(p.config.Schedules) == 0 {
 		fmt.Println("No recurring schedules configured.")
 		fmt.Printf("Config file: %s\n", p.configPath)
@@ -225,7 +225,7 @@ func (p *RecurringPlugin) cmdStatus(transactions []*AST.Transaction) error {
 	return nil
 }
 
-func (p *RecurringPlugin) cmdGenerate(transactions []*AST.Transaction) error {
+func (p *RecurringPlugin) cmdGenerate(transactions []*ast.Transaction) error {
 	now := time.Now()
 	generated := 0
 
@@ -337,15 +337,15 @@ func schedulesInYear(s *Schedule, year int) int {
 	return len(datesSince(s, start, end))
 }
 
-func buildScheduleTxn(s *Schedule, date time.Time) *AST.Transaction {
-	txn := AST.NewTransaction(date, s.Description)
+func buildScheduleTxn(s *Schedule, date time.Time) *ast.Transaction {
+	txn := ast.NewTransaction(date, s.Description)
 	txn.Tags["recurring_id"] = s.ID
 	for k, v := range s.Tags {
 		txn.Tags[k] = v
 	}
 	txn.Postings = append(txn.Postings,
-		AST.NewPosting(s.DebitAccount, AST.Amount{Value: s.Amount, Currency: s.Currency}),
-		AST.NewPosting(s.CreditAccount, AST.Amount{Value: -s.Amount, Currency: s.Currency}),
+		ast.NewPosting(s.DebitAccount, ast.Amount{Value: s.Amount, Currency: s.Currency}),
+		ast.NewPosting(s.CreditAccount, ast.Amount{Value: -s.Amount, Currency: s.Currency}),
 	)
 	return txn
 }

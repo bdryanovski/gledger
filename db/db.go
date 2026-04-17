@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/utils"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
@@ -70,12 +70,13 @@ func (d *DB) Initialize() error {
 
 // LoadFromTransactions clears and repopulates the cache from a transaction slice.
 // It runs inside a single SQLite transaction for atomicity and performance.
-func (d *DB) LoadFromTransactions(transactions []*AST.Transaction) error {
+func (d *DB) LoadFromTransactions(transactions []*ast.Transaction) error {
 	tx, err := d.conn.Begin()
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback() //nolint:errcheck
+	// Rollback is a no-op if tx.Commit() succeeds; error is safely ignored here.
+	defer func() { _ = tx.Rollback() }()
 
 	// Clear existing data in dependency order.
 	for _, tbl := range []string{"posting_tags", "postings", "transaction_tags", "transactions"} {
@@ -152,7 +153,7 @@ func (d *DB) LoadFromTransactions(transactions []*AST.Transaction) error {
 // stableTransactionID returns a deterministic ID for txn.
 // If the transaction already has an ID it is used directly; otherwise a hash
 // of date + description + first-posting account + first-posting amount is used.
-func stableTransactionID(txn *AST.Transaction) string {
+func stableTransactionID(txn *ast.Transaction) string {
 	if txn.ID != "" {
 		return txn.ID
 	}
@@ -227,7 +228,7 @@ func ComputeChecksum(filePaths []string) (string, error) {
 //	dbPath:       path to the .db file, e.g. filepath.Join(dataDir, "cache.db")
 //	transactions: all loaded journal transactions
 //	journalFiles: journal file paths used to detect staleness
-func OpenOrRebuild(dbPath string, transactions []*AST.Transaction, journalFiles []string) (*DB, error) {
+func OpenOrRebuild(dbPath string, transactions []*ast.Transaction, journalFiles []string) (*DB, error) {
 	database, err := Open(dbPath)
 	if err != nil {
 		return nil, err

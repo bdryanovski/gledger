@@ -12,7 +12,7 @@ import (
 	"doublebook/config"
 	"doublebook/currency"
 	"doublebook/db"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/journal"
 	"doublebook/utils"
 )
@@ -31,7 +31,7 @@ func APICommand(ctx *config.CLIContext, args []string) error {
 	}
 
 	// Load journal.
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: %v\n", err)
 	}

@@ -5,9 +5,9 @@ import (
 	"sort"
 
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/journal"
-	UI "doublebook/ui"
+	"doublebook/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -15,14 +15,14 @@ import (
 // InsertCommand runs the interactive inline form for adding a new transaction.
 func InsertCommand(ctx *config.CLIContext, args []string) error {
 	// Load the journal so we can populate autocomplete data.
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	_ = interp.LoadJournal(ctx.EffectiveJournalName())
 
 	accounts := collectKnownAccounts(interp)
 	currencies := collectKnownCurrencies(interp, ctx.Config.Currency)
 
 	// Build and run the insert form (non-fullscreen / inline mode).
-	model := UI.NewInsertModel(accounts, currencies, ctx.Config.Currency)
+	model := ui.NewInsertModel(accounts, currencies, ctx.Config.Currency)
 	prog := tea.NewProgram(model)
 
 	finalRaw, err := prog.Run()
@@ -30,7 +30,7 @@ func InsertCommand(ctx *config.CLIContext, args []string) error {
 		return fmt.Errorf("insert form error: %w", err)
 	}
 
-	final, ok := finalRaw.(UI.InsertModel)
+	final, ok := finalRaw.(ui.InsertModel)
 	if !ok {
 		return fmt.Errorf("unexpected model type after insert form")
 	}
@@ -64,7 +64,7 @@ func InsertCommand(ctx *config.CLIContext, args []string) error {
 
 // collectKnownAccounts returns a sorted, deduplicated list of all account
 // names that appear in the loaded journal.
-func collectKnownAccounts(interp *Interpreter.Interpreter) []string {
+func collectKnownAccounts(interp *interpreter.Interpreter) []string {
 	seen := make(map[string]bool)
 	for _, txn := range interp.GetTransactions() {
 		for _, p := range txn.Postings {
@@ -81,7 +81,7 @@ func collectKnownAccounts(interp *Interpreter.Interpreter) []string {
 
 // collectKnownCurrencies returns a sorted list of currencies found in the
 // journal, always including the base currency and common defaults.
-func collectKnownCurrencies(interp *Interpreter.Interpreter, baseCurrency string) []string {
+func collectKnownCurrencies(interp *interpreter.Interpreter, baseCurrency string) []string {
 	seen := map[string]bool{
 		baseCurrency: true,
 		"USD":        true, "EUR": true, "GBP": true,

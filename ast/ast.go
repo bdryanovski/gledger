@@ -1,7 +1,7 @@
 // Package AST defines the Abstract Syntax Tree types for the DoubleBook journal format.
 // These types are the shared data model used by the lexer, parser, interpreter, and all
 // downstream packages.
-package AST
+package ast
 
 import (
 	"fmt"

@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/utils"
 
 	"github.com/charmbracelet/lipgloss"
@@ -67,12 +67,12 @@ func BalanceCommand(ctx *config.CLIContext, args []string) error {
 		endDate = d
 	}
 
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		return fmt.Errorf("loading journal: %w", err)
 	}
 
-	filter := Interpreter.Filter{
+	filter := interpreter.Filter{
 		BeginDate: beginDate,
 		EndDate:   endDate,
 	}
@@ -91,8 +91,8 @@ func BalanceCommand(ctx *config.CLIContext, args []string) error {
 // ---------------------------------------------------------------------------
 
 func printFlatBalance(
-	interp *Interpreter.Interpreter,
-	filter Interpreter.Filter,
+	interp *interpreter.Interpreter,
+	filter interpreter.Filter,
 	accountFilter string,
 	noTotal bool,
 	currency string,
@@ -194,15 +194,15 @@ type treeRow struct {
 }
 
 func printTreeBalance(
-	interp *Interpreter.Interpreter,
-	filter Interpreter.Filter,
+	interp *interpreter.Interpreter,
+	filter interpreter.Filter,
 	accountFilter string,
 	noTotal bool,
 	currency string,
 	creditPrefixes []string,
 ) error {
 	nodes := interp.CalculateBalancesTree(filter)
-	groups := Interpreter.GroupAccountsByType(nodes)
+	groups := interpreter.GroupAccountsByType(nodes)
 
 	// Ordered account types for display.
 	order := []string{"assets", "liabilities", "equity", "income", "expenses", "other"}
@@ -264,7 +264,7 @@ func printTreeBalance(
 }
 
 // collectTreeRows recursively adds nodes to rows, skipping zero-balance nodes.
-func collectTreeRows(node *Interpreter.AccountNode, depth int, rows *[]treeRow) {
+func collectTreeRows(node *interpreter.AccountNode, depth int, rows *[]treeRow) {
 	if node.Amount.Value == 0 {
 		return
 	}

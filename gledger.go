@@ -5,7 +5,7 @@ import (
 	"os"
 
 	cli "doublebook/cli"
-	UI "doublebook/ui"
+	"doublebook/ui"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,7 +23,7 @@ func main() {
 		return
 	}
 
-	m, err := UI.InitialModel()
+	m, err := ui.InitialModel()
 
 	if err != nil {
 		fmt.Printf("Error initializing model: %v\n", err)

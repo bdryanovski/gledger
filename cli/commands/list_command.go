@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 )
 
 // ListCommand prints a plain-text transaction register to stdout,
@@ -13,7 +13,7 @@ import (
 // NOTE: This is a temporary implementation superseded by the full register
 // command in T1.10.
 func ListCommand(ctx *config.CLIContext, args []string) error {
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 
 	// Use LoadJournal for multi-file support when a journal name is given,
 	// falling back to the single-file path for backward compat.
@@ -22,7 +22,7 @@ func ListCommand(ctx *config.CLIContext, args []string) error {
 		fmt.Printf("Note: could not load journal: %v\n\n", err)
 	}
 
-	filter := Interpreter.Filter{
+	filter := interpreter.Filter{
 		BeginDate: ctx.BeginDate,
 		EndDate:   ctx.EndDate,
 	}

@@ -5,16 +5,16 @@
 //	VIEW_ADD    — form for adding a new transaction
 //	VIEW_REPORT — balance / income-statement report
 //	VIEW_HELP   — keyboard shortcut reference
-package UI
+package ui
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/utils"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -85,7 +85,7 @@ var (
 
 // Model is the Bubbletea application model.
 type Model struct {
-	interpreter *Interpreter.Interpreter
+	interpreter *interpreter.Interpreter
 	config      *config.Config
 
 	currentView ViewMode
@@ -127,7 +127,7 @@ func InitialModel() (Model, error) {
 		return Model{}, fmt.Errorf("loading config: %w", err)
 	}
 
-	interp := Interpreter.NewInterpreter(cfg)
+	interp := interpreter.NewInterpreter(cfg)
 	// Non-fatal: may not exist yet.
 	_ = interp.LoadFromFile(cfg.DataFile)
 
@@ -414,15 +414,6 @@ func (m Model) selectedDetail() string {
 	)
 }
 
-// colorAmount renders an amount string using sign-based coloring.
-// For plain amounts (no account context), negative = red, positive = green.
-func colorAmount(s string) string {
-	if strings.HasPrefix(s, "-") {
-		return styleNegative.Render(s)
-	}
-	return stylePositive.Render(s)
-}
-
 // colorAmountForAccount colors an amount based on account type using the
 // credit-normal prefixes from config — no hardcoded account names.
 func colorAmountForAccount(s, account string, creditPrefixes []string) string {
@@ -476,8 +467,8 @@ func (m Model) viewReport() string {
 	b.WriteString("\n\n")
 
 	// Build a sorted, colourised balance list.
-	nodes := m.interpreter.CalculateBalancesTree(Interpreter.Filter{})
-	groups := Interpreter.GroupAccountsByType(nodes)
+	nodes := m.interpreter.CalculateBalancesTree(interpreter.Filter{})
+	groups := interpreter.GroupAccountsByType(nodes)
 
 	order := []string{"assets", "liabilities", "equity", "income", "expenses", "other"}
 
@@ -527,7 +518,7 @@ func (m Model) viewReport() string {
 }
 
 // collectReportRows recursively appends AccountNodes to rows with indentation.
-func collectReportRows(node *Interpreter.AccountNode, depth int, rows *[]reportRow) {
+func collectReportRows(node *interpreter.AccountNode, depth int, rows *[]reportRow) {
 	if node.Amount.Value == 0 {
 		return
 	}
@@ -712,10 +703,10 @@ func (m *Model) submitTransaction() error {
 		return fmt.Errorf("credit account is required")
 	}
 
-	txn := AST.NewTransaction(date, desc)
+	txn := ast.NewTransaction(date, desc)
 	txn.Postings = append(txn.Postings,
-		AST.NewPosting(debitAcct, amount),
-		AST.NewPosting(creditAcct, amount.Negate()),
+		ast.NewPosting(debitAcct, amount),
+		ast.NewPosting(creditAcct, amount.Negate()),
 	)
 
 	if err := m.interpreter.AddTransaction(txn); err != nil {

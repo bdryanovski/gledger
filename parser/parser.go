@@ -1,13 +1,13 @@
 // Package Parser converts a stream of tokens from the lexer into a slice of
-// *AST.Transaction values that represent the journal entries.
-package Parser
+// *ast.Transaction values that represent the journal entries.
+package parser
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/lexer"
 	"doublebook/utils"
 )
@@ -19,8 +19,8 @@ import (
 // Parser holds the two-token look-ahead state used during parsing.
 type Parser struct {
 	lex     *lexer.Lexer
-	current AST.Token // token being examined now
-	peek    AST.Token // one token ahead (look-ahead)
+	current ast.Token // token being examined now
+	peek    ast.Token // one token ahead (look-ahead)
 }
 
 func newParser(input string) *Parser {
@@ -39,8 +39,8 @@ func (p *Parser) advance() {
 // skipBlanks advances past TOKEN_NEWLINE and top-level TOKEN_COMMENT tokens.
 // Called at the top of the main loop so we always land on TOKEN_DATE or TOKEN_EOF.
 func (p *Parser) skipBlanks() {
-	for p.current.Type == AST.TOKEN_NEWLINE ||
-		p.current.Type == AST.TOKEN_COMMENT {
+	for p.current.Type == ast.TOKEN_NEWLINE ||
+		p.current.Type == ast.TOKEN_COMMENT {
 		p.advance()
 	}
 }
@@ -48,8 +48,8 @@ func (p *Parser) skipBlanks() {
 // isIndentedComment returns true when the current token is TOKEN_INDENT and
 // the next token is TOKEN_COMMENT — i.e. the line is `    ; some text`.
 func (p *Parser) isIndentedComment() bool {
-	return p.current.Type == AST.TOKEN_INDENT &&
-		p.peek.Type == AST.TOKEN_COMMENT
+	return p.current.Type == ast.TOKEN_INDENT &&
+		p.peek.Type == ast.TOKEN_COMMENT
 }
 
 // ---------------------------------------------------------------------------
@@ -58,16 +58,16 @@ func (p *Parser) isIndentedComment() bool {
 
 // ParseTransactions parses raw hledger-compatible journal text and returns
 // the ordered list of transactions.
-func ParseTransactions(input string) ([]*AST.Transaction, error) {
+func ParseTransactions(input string) ([]*ast.Transaction, error) {
 	p := newParser(input)
 	return p.parse()
 }
 
-func (p *Parser) parse() ([]*AST.Transaction, error) {
-	var txns []*AST.Transaction
+func (p *Parser) parse() ([]*ast.Transaction, error) {
+	var txns []*ast.Transaction
 
 	p.skipBlanks()
-	for p.current.Type != AST.TOKEN_EOF {
+	for p.current.Type != ast.TOKEN_EOF {
 		txn, err := p.parseTransaction()
 		if err != nil {
 			return nil, fmt.Errorf("line %d: %w", p.current.Line, err)
@@ -84,9 +84,9 @@ func (p *Parser) parse() ([]*AST.Transaction, error) {
 // Transaction parser
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parseTransaction() (*AST.Transaction, error) {
+func (p *Parser) parseTransaction() (*ast.Transaction, error) {
 	// ── 1. Date ──────────────────────────────────────────────────────────
-	if p.current.Type != AST.TOKEN_DATE {
+	if p.current.Type != ast.TOKEN_DATE {
 		return nil, fmt.Errorf("expected date, got %q", p.current.Value)
 	}
 	date, err := time.Parse("2006-01-02", p.current.Value)
@@ -97,7 +97,7 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 
 	// ── 2. Optional status marker (* or !) ───────────────────────────────
 	status := ""
-	if p.current.Type == AST.TOKEN_STATUS {
+	if p.current.Type == ast.TOKEN_STATUS {
 		status = p.current.Value
 		p.advance()
 	}
@@ -108,9 +108,9 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 	// containing slashes, numbers, parentheses, etc. are preserved verbatim.
 	// Example: "BILLA 127 01", "WAY4BOOK-2025/01/02", "Payment (ref: 123)"
 	var descParts []string
-	for p.current.Type != AST.TOKEN_NEWLINE &&
-		p.current.Type != AST.TOKEN_EOF &&
-		p.current.Type != AST.TOKEN_COMMENT {
+	for p.current.Type != ast.TOKEN_NEWLINE &&
+		p.current.Type != ast.TOKEN_EOF &&
+		p.current.Type != ast.TOKEN_COMMENT {
 		val := strings.TrimSpace(p.current.Value)
 		if val != "" {
 			descParts = append(descParts, val)
@@ -124,19 +124,19 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 
 	// ── 4. Optional trailing comment on the header line ──────────────────
 	headerComment := ""
-	if p.current.Type == AST.TOKEN_COMMENT {
+	if p.current.Type == ast.TOKEN_COMMENT {
 		_, _, headerComment = parseTagsFromComment(p.current.Value)
 		p.advance()
 	}
 
 	// ── 5. Newline terminating the header ────────────────────────────────
-	if p.current.Type != AST.TOKEN_NEWLINE {
+	if p.current.Type != ast.TOKEN_NEWLINE {
 		return nil, fmt.Errorf("expected newline after description, got %q", p.current.Value)
 	}
 	p.advance()
 
 	// ── 6. Build the transaction skeleton ────────────────────────────────
-	txn := AST.NewTransaction(date, description)
+	txn := ast.NewTransaction(date, description)
 	txn.Status = status
 	txn.Comment = headerComment
 
@@ -146,11 +146,11 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 	//   • indented `;` lines   (TOKEN_INDENT + TOKEN_COMMENT)
 	// We consume them all, extracting id/tags as we go.
 	for {
-		if p.current.Type == AST.TOKEN_COMMENT {
+		if p.current.Type == ast.TOKEN_COMMENT {
 			id, tags, rest := parseTagsFromComment(p.current.Value)
 			applyMeta(txn, id, tags, rest)
 			p.advance()
-			if p.current.Type == AST.TOKEN_NEWLINE {
+			if p.current.Type == ast.TOKEN_NEWLINE {
 				p.advance()
 			}
 		} else if p.isIndentedComment() {
@@ -158,7 +158,7 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 			id, tags, rest := parseTagsFromComment(p.current.Value)
 			applyMeta(txn, id, tags, rest)
 			p.advance() // skip comment
-			if p.current.Type == AST.TOKEN_NEWLINE {
+			if p.current.Type == ast.TOKEN_NEWLINE {
 				p.advance()
 			}
 		} else {
@@ -167,14 +167,14 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 	}
 
 	// ── 8. Postings ───────────────────────────────────────────────────────
-	for p.current.Type == AST.TOKEN_INDENT {
+	for p.current.Type == ast.TOKEN_INDENT {
 		// Indented comment between postings → treat as transaction metadata.
 		if p.isIndentedComment() {
 			p.advance() // skip indent
 			id, tags, rest := parseTagsFromComment(p.current.Value)
 			applyMeta(txn, id, tags, rest)
 			p.advance() // skip comment
-			if p.current.Type == AST.TOKEN_NEWLINE {
+			if p.current.Type == ast.TOKEN_NEWLINE {
 				p.advance()
 			}
 			continue
@@ -223,38 +223,38 @@ func (p *Parser) parseTransaction() (*AST.Transaction, error) {
 // Posting parser
 // ---------------------------------------------------------------------------
 
-func (p *Parser) parsePosting() (*AST.Posting, error) {
-	if p.current.Type != AST.TOKEN_INDENT {
+func (p *Parser) parsePosting() (*ast.Posting, error) {
+	if p.current.Type != ast.TOKEN_INDENT {
 		return nil, fmt.Errorf("expected indent, got %q", p.current.Value)
 	}
 	p.advance() // consume indent
 
-	if p.current.Type != AST.TOKEN_ACCOUNT {
+	if p.current.Type != ast.TOKEN_ACCOUNT {
 		return nil, fmt.Errorf("expected account name, got %q (type %v)",
 			p.current.Value, p.current.Type)
 	}
 	account := p.current.Value
 	p.advance()
 
-	var posting *AST.Posting
+	var posting *ast.Posting
 
 	switch p.current.Type {
-	case AST.TOKEN_AMOUNT:
+	case ast.TOKEN_AMOUNT:
 		// Normal posting: explicit amount.
 		amount, err := utils.ParseAmount(p.current.Value)
 		if err != nil {
 			return nil, fmt.Errorf("invalid amount %q: %w", p.current.Value, err)
 		}
 		p.advance()
-		posting = AST.NewPosting(account, amount)
+		posting = ast.NewPosting(account, amount)
 
-	case AST.TOKEN_NEWLINE, AST.TOKEN_EOF:
+	case ast.TOKEN_NEWLINE, ast.TOKEN_EOF:
 		// Implied amount: no amount on this line.
-		posting = AST.NewOmittedPosting(account)
+		posting = ast.NewOmittedPosting(account)
 
-	case AST.TOKEN_COMMENT:
+	case ast.TOKEN_COMMENT:
 		// Implied amount: comment follows directly (no amount written).
-		posting = AST.NewOmittedPosting(account)
+		posting = ast.NewOmittedPosting(account)
 
 	default:
 		return nil, fmt.Errorf("expected amount or end of posting line, got %q (type %v)",
@@ -262,7 +262,7 @@ func (p *Parser) parsePosting() (*AST.Posting, error) {
 	}
 
 	// Optional inline comment after the amount.
-	if p.current.Type == AST.TOKEN_COMMENT {
+	if p.current.Type == ast.TOKEN_COMMENT {
 		_, tags, rest := parseTagsFromComment(p.current.Value)
 		for k, v := range tags {
 			posting.Tags[k] = v
@@ -272,7 +272,7 @@ func (p *Parser) parsePosting() (*AST.Posting, error) {
 	}
 
 	// Consume the newline that ends the posting line.
-	if p.current.Type == AST.TOKEN_NEWLINE {
+	if p.current.Type == ast.TOKEN_NEWLINE {
 		p.advance()
 	}
 
@@ -323,7 +323,7 @@ func parseTagsFromComment(literal string) (id string, tags map[string]string, re
 }
 
 // applyMeta merges parsed id/tags/rest into the transaction.
-func applyMeta(txn *AST.Transaction, id string, tags map[string]string, rest string) {
+func applyMeta(txn *ast.Transaction, id string, tags map[string]string, rest string) {
 	if id != "" {
 		txn.ID = id
 	}

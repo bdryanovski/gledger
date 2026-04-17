@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 )
 
 // AddCommand adds a single transaction via command-line flags.
@@ -33,7 +33,7 @@ func AddCommand(ctx *config.CLIContext, args []string) error {
 		return fmt.Errorf("building transaction: %w", err)
 	}
 
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadFromFile(ctx.Config.DataFile); err != nil {
 		return fmt.Errorf("loading journal: %w", err)
 	}
@@ -52,21 +52,21 @@ func AddCommand(ctx *config.CLIContext, args []string) error {
 }
 
 // buildTransaction constructs a balanced two-posting transaction.
-func buildTransaction(date, description string, amount float64, from, to, currency string) (*AST.Transaction, error) {
+func buildTransaction(date, description string, amount float64, from, to, currency string) (*ast.Transaction, error) {
 	d, err := time.Parse("2006-01-02", date)
 	if err != nil {
 		return nil, fmt.Errorf("invalid date %q: %w", date, err)
 	}
 
-	txn := AST.NewTransaction(d, description)
+	txn := ast.NewTransaction(d, description)
 	txn.Postings = append(txn.Postings,
-		AST.NewPosting(from, AST.Amount{Value: -amount, Currency: currency}),
-		AST.NewPosting(to, AST.Amount{Value: amount, Currency: currency}),
+		ast.NewPosting(from, ast.Amount{Value: -amount, Currency: currency}),
+		ast.NewPosting(to, ast.Amount{Value: amount, Currency: currency}),
 	)
 	return txn, nil
 }
 
-func printTransaction(txn *AST.Transaction) {
+func printTransaction(txn *ast.Transaction) {
 	fmt.Printf("%s  %s\n", txn.Date.Format("2006-01-02"), txn.Description)
 	for _, p := range txn.Postings {
 		fmt.Printf("    %-40s  %s\n", p.Account, p.Amount.String())

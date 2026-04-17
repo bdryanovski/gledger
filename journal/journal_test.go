@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // ---------------------------------------------------------------------------
@@ -26,12 +26,12 @@ func makeJournal(t *testing.T, path, content string) {
 }
 
 // sampleTxn builds a balanced two-posting transaction.
-func sampleTxn(dateStr, desc string, amount float64) *AST.Transaction {
+func sampleTxn(dateStr, desc string, amount float64) *ast.Transaction {
 	date, _ := time.Parse("2006-01-02", dateStr)
-	txn := AST.NewTransaction(date, desc)
+	txn := ast.NewTransaction(date, desc)
 	txn.Postings = append(txn.Postings,
-		AST.NewPosting("expenses:food", AST.Amount{Value: amount, Currency: "USD"}),
-		AST.NewPosting("assets:cash", AST.Amount{Value: -amount, Currency: "USD"}),
+		ast.NewPosting("expenses:food", ast.Amount{Value: amount, Currency: "USD"}),
+		ast.NewPosting("assets:cash", ast.Amount{Value: -amount, Currency: "USD"}),
 	)
 	return txn
 }
@@ -185,7 +185,7 @@ func TestWriteAll_CreatesFile(t *testing.T) {
 	path := filepath.Join(dir, "out.journal")
 
 	txn := sampleTxn("2025-01-15", "Test", 42.00)
-	if err := WriteAll(path, []*AST.Transaction{txn}); err != nil {
+	if err := WriteAll(path, []*ast.Transaction{txn}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -211,7 +211,7 @@ func TestWriteAll_Overwrites(t *testing.T) {
 
 	// Overwrite with 1 transaction.
 	txn := sampleTxn("2025-03-01", "Single", 5.00)
-	if err := WriteAll(path, []*AST.Transaction{txn}); err != nil {
+	if err := WriteAll(path, []*ast.Transaction{txn}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 

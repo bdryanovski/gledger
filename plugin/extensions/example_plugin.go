@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	AST "doublebook/ast"
-	Plugin "doublebook/plugin"
+	"doublebook/ast"
+	"doublebook/plugin"
 )
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ import (
 // It demonstrates the plugin interface and produces a simple report.
 // Use it as a starting point for writing your own plugin.
 type ExamplePlugin struct {
-	Plugin.DefaultPlugin // inherit all no-op hooks
+	plugin.DefaultPlugin // inherit all no-op hooks
 	transactionCount     int
 }
 
@@ -32,12 +32,12 @@ func (p *ExamplePlugin) Initialize(config map[string]interface{}) error {
 	return nil
 }
 
-func (p *ExamplePlugin) OnParse(transactions []*AST.Transaction) error {
+func (p *ExamplePlugin) OnParse(transactions []*ast.Transaction) error {
 	p.transactionCount += len(transactions)
 	return nil
 }
 
-func (p *ExamplePlugin) OnReport(transactions []*AST.Transaction) string {
+func (p *ExamplePlugin) OnReport(transactions []*ast.Transaction) string {
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("Example Plugin — %d transactions loaded\n", len(transactions)))
 	return b.String()

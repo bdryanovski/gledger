@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"doublebook/config"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/plugin/extensions/recurring"
 	"doublebook/plugin/extensions/sqlexport"
 )
@@ -25,7 +25,7 @@ func PluginCommand(ctx *config.CLIContext, args []string) error {
 }
 
 func runPluginList(ctx *config.CLIContext) error {
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	_ = interp.LoadJournal(ctx.EffectiveJournalName())
 
 	fmt.Println("Built-in plugins:")
@@ -46,7 +46,7 @@ func runPluginList(ctx *config.CLIContext) error {
 
 func runPlugin(ctx *config.CLIContext, name string, args []string) error {
 	// Load the journal so plugins have data to work with.
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		fmt.Printf("  warning: %v\n", err)
 	}

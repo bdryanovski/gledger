@@ -9,9 +9,9 @@ import (
 	"doublebook/config"
 	"doublebook/db"
 	"doublebook/fql"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/journal"
-	UI "doublebook/ui"
+	"doublebook/ui"
 	"doublebook/utils"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -50,7 +50,7 @@ func FQLCommand(ctx *config.CLIContext, args []string) error {
 
 	// ── Interactive REPL ─────────────────────────────────────────────────
 	w, h := termWidth(), termHeight()
-	model := UI.NewFQLModel(database, w, h)
+	model := ui.NewFQLModel(database, w, h)
 	prog := tea.NewProgram(model, tea.WithAltScreen())
 	_, err = prog.Run()
 	return err
@@ -63,7 +63,7 @@ func FQLCommand(ctx *config.CLIContext, args []string) error {
 // initFQLDB loads the journal and opens (or rebuilds) the SQLite query cache.
 func initFQLDB(ctx *config.CLIContext) (*db.DB, error) {
 	// Load all journal transactions via the interpreter.
-	interp := Interpreter.NewInterpreter(ctx.Config)
+	interp := interpreter.NewInterpreter(ctx.Config)
 	if err := interp.LoadJournal(ctx.EffectiveJournalName()); err != nil {
 		// Non-fatal: we may have a partial or empty journal.
 		fmt.Fprintf(os.Stderr, "  warning: %v\n", err)

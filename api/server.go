@@ -13,7 +13,7 @@ import (
 	"doublebook/api/handlers"
 	"doublebook/currency"
 	"doublebook/db"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 )
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ import (
 // Server holds the API server state.
 type Server struct {
 	port      int
-	interp    *Interpreter.Interpreter
+	interp    *interpreter.Interpreter
 	db        *db.DB
 	converter *currency.CachingConverter
 	mux       *http.ServeMux
@@ -32,7 +32,7 @@ type Server struct {
 // NewServer creates a new API server.
 func NewServer(
 	port int,
-	interp *Interpreter.Interpreter,
+	interp *interpreter.Interpreter,
 	database *db.DB,
 	conv *currency.CachingConverter,
 ) *Server {
@@ -162,7 +162,9 @@ func (rw *responseWriter) WriteHeader(status int) {
 
 func respond(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data) //nolint:errcheck
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
+	}
 }
 
 func respondError(w http.ResponseWriter, status int, message string) {

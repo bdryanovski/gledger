@@ -14,7 +14,7 @@ import (
 	"doublebook/db"
 	"doublebook/fql"
 	"doublebook/importer"
-	Interpreter "doublebook/interpreter"
+	"doublebook/interpreter"
 	"doublebook/journal"
 	"doublebook/utils"
 )
@@ -25,14 +25,14 @@ import (
 
 // Handlers holds shared dependencies for all API handlers.
 type Handlers struct {
-	interp    *Interpreter.Interpreter
+	interp    *interpreter.Interpreter
 	db        *db.DB
 	converter *currency.CachingConverter
 }
 
 // New creates a Handlers instance.
 func New(
-	interp *Interpreter.Interpreter,
+	interp *interpreter.Interpreter,
 	database *db.DB,
 	conv *currency.CachingConverter,
 ) *Handlers {
@@ -50,7 +50,7 @@ func (h *Handlers) ListTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	filter := Interpreter.Filter{
+	filter := interpreter.Filter{
 		BeginDate:   q.Get("begin"),
 		EndDate:     q.Get("end"),
 		Account:     q.Get("account"),
@@ -124,8 +124,8 @@ func (h *Handlers) ListAccounts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodes := h.interp.CalculateBalancesTree(Interpreter.Filter{})
-	groups := Interpreter.GroupAccountsByType(nodes)
+	nodes := h.interp.CalculateBalancesTree(interpreter.Filter{})
+	groups := interpreter.GroupAccountsByType(nodes)
 
 	typeFilter := strings.ToLower(r.URL.Query().Get("type"))
 
@@ -165,9 +165,9 @@ func (h *Handlers) BalanceReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	filter := Interpreter.Filter{BeginDate: q.Get("begin"), EndDate: q.Get("end")}
+	filter := interpreter.Filter{BeginDate: q.Get("begin"), EndDate: q.Get("end")}
 	nodes := h.interp.CalculateBalancesTree(filter)
-	groups := Interpreter.GroupAccountsByType(nodes)
+	groups := interpreter.GroupAccountsByType(nodes)
 
 	type acctEntry struct {
 		Account  string  `json:"account"`
@@ -198,7 +198,7 @@ func (h *Handlers) IncomeStatement(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
-	filter := Interpreter.Filter{BeginDate: q.Get("begin"), EndDate: q.Get("end")}
+	filter := interpreter.Filter{BeginDate: q.Get("begin"), EndDate: q.Get("end")}
 	stmt := h.interp.GenerateIncomeStatement(filter)
 
 	type amtEntry struct {
@@ -345,18 +345,22 @@ func (h *Handlers) ImportCSV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var writeErrors []string
 	if !dryRun && len(result.Imported) > 0 {
 		cfg := h.interp.GetConfig()
 		dataDir := utils.ExpandHome(cfg.DataDir)
-		for _, txn := range result.Imported {
-			journal.AppendTransaction(cfg.JournalName, dataDir, txn) //nolint:errcheck
+		for i, txn := range result.Imported {
+			if err := journal.AppendTransaction(cfg.JournalName, dataDir, txn); err != nil {
+				writeErrors = append(writeErrors, fmt.Sprintf("write error for txn %d: %v", i+1, err))
+			}
 		}
 	}
 
-	errStrs := make([]string, 0, len(result.Errors))
+	errStrs := make([]string, 0, len(result.Errors)+len(writeErrors))
 	for _, e := range result.Errors {
 		errStrs = append(errStrs, fmt.Sprintf("row %d: %s", e.Row, e.Reason))
 	}
+	errStrs = append(errStrs, writeErrors...)
 	respond(w, http.StatusOK, map[string]interface{}{
 		"imported": len(result.Imported),
 		"skipped":  result.Skipped,
@@ -372,7 +376,9 @@ func (h *Handlers) ImportCSV(w http.ResponseWriter, r *http.Request) {
 
 func respond(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data) //nolint:errcheck
+	// Error writing to HTTP response cannot be meaningfully handled;
+	// client may have disconnected. Silently ignore.
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func respondError(w http.ResponseWriter, status int, message string) {
@@ -391,6 +397,8 @@ func writeTempToPath(src io.Reader, pattern string) string {
 		return ""
 	}
 	defer f.Close()
-	io.Copy(f, src) //nolint:errcheck
+	if _, err := io.Copy(f, src); err != nil {
+		return ""
+	}
 	return f.Name()
 }

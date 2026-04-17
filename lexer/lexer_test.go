@@ -3,7 +3,7 @@ package lexer
 import (
 	"testing"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // ---------------------------------------------------------------------------
@@ -13,20 +13,20 @@ import (
 func TestMultiCurrencyAmounts(t *testing.T) {
 	cases := []struct {
 		input    string
-		wantType AST.TokenType
+		wantType ast.TokenType
 		wantVal  string
 	}{
-		{"$45.32", AST.TOKEN_AMOUNT, "$45.32"},
-		{"-$45.32", AST.TOKEN_AMOUNT, "-$45.32"},
-		{"£10.50", AST.TOKEN_AMOUNT, "£10.50"},
-		{"-£10.50", AST.TOKEN_AMOUNT, "-£10.50"},
-		{"€25.00", AST.TOKEN_AMOUNT, "€25.00"},
-		{"-€25.00", AST.TOKEN_AMOUNT, "-€25.00"},
-		{"100 BGN", AST.TOKEN_AMOUNT, "100 BGN"},
-		{"-100 BGN", AST.TOKEN_AMOUNT, "-100 BGN"},
-		{"45.32", AST.TOKEN_AMOUNT, "45.32"},
-		{"-45.32", AST.TOKEN_AMOUNT, "-45.32"},
-		{"1,234.56", AST.TOKEN_AMOUNT, "1,234.56"},
+		{"$45.32", ast.TOKEN_AMOUNT, "$45.32"},
+		{"-$45.32", ast.TOKEN_AMOUNT, "-$45.32"},
+		{"£10.50", ast.TOKEN_AMOUNT, "£10.50"},
+		{"-£10.50", ast.TOKEN_AMOUNT, "-£10.50"},
+		{"€25.00", ast.TOKEN_AMOUNT, "€25.00"},
+		{"-€25.00", ast.TOKEN_AMOUNT, "-€25.00"},
+		{"100 BGN", ast.TOKEN_AMOUNT, "100 BGN"},
+		{"-100 BGN", ast.TOKEN_AMOUNT, "-100 BGN"},
+		{"45.32", ast.TOKEN_AMOUNT, "45.32"},
+		{"-45.32", ast.TOKEN_AMOUNT, "-45.32"},
+		{"1,234.56", ast.TOKEN_AMOUNT, "1,234.56"},
 	}
 
 	for _, tc := range cases {
@@ -48,7 +48,7 @@ func TestMultiCurrencyAmounts(t *testing.T) {
 func TestDateToken(t *testing.T) {
 	l := NewLexer("2025-01-15 ")
 	tok := l.NextToken()
-	if tok.Type != AST.TOKEN_DATE {
+	if tok.Type != ast.TOKEN_DATE {
 		t.Errorf("expected TOKEN_DATE, got %v", tok.Type)
 	}
 	if tok.Value != "2025-01-15" {
@@ -60,7 +60,7 @@ func TestDateToken(t *testing.T) {
 func TestBareNumberNotDate(t *testing.T) {
 	l := NewLexer("45.32")
 	tok := l.NextToken()
-	if tok.Type != AST.TOKEN_AMOUNT {
+	if tok.Type != ast.TOKEN_AMOUNT {
 		t.Errorf("expected TOKEN_AMOUNT, got %v (value=%q)", tok.Type, tok.Value)
 	}
 }
@@ -78,10 +78,10 @@ func TestStatusTokenCleared(t *testing.T) {
 	if len(tokens) < 4 {
 		t.Fatalf("expected at least 4 tokens, got %d: %v", len(tokens), tokens)
 	}
-	if tokens[0].Type != AST.TOKEN_DATE {
+	if tokens[0].Type != ast.TOKEN_DATE {
 		t.Errorf("tokens[0]: expected TOKEN_DATE, got %v", tokens[0].Type)
 	}
-	if tokens[1].Type != AST.TOKEN_STATUS || tokens[1].Value != "*" {
+	if tokens[1].Type != ast.TOKEN_STATUS || tokens[1].Value != "*" {
 		t.Errorf("tokens[1]: expected TOKEN_STATUS '*', got %v %q", tokens[1].Type, tokens[1].Value)
 	}
 }
@@ -93,7 +93,7 @@ func TestStatusTokenPending(t *testing.T) {
 	if len(tokens) < 3 {
 		t.Fatalf("too few tokens: %d", len(tokens))
 	}
-	if tokens[1].Type != AST.TOKEN_STATUS || tokens[1].Value != "!" {
+	if tokens[1].Type != ast.TOKEN_STATUS || tokens[1].Value != "!" {
 		t.Errorf("tokens[1]: expected TOKEN_STATUS '!', got %v %q", tokens[1].Type, tokens[1].Value)
 	}
 }
@@ -106,7 +106,7 @@ func TestCommentAtTopLevel(t *testing.T) {
 	input := "; this is a comment\n"
 	l := NewLexer(input)
 	tok := l.NextToken()
-	if tok.Type != AST.TOKEN_COMMENT {
+	if tok.Type != ast.TOKEN_COMMENT {
 		t.Errorf("expected TOKEN_COMMENT, got %v", tok.Type)
 	}
 	if tok.Value != "; this is a comment" {
@@ -119,10 +119,10 @@ func TestCommentBetweenTransactions(t *testing.T) {
 	l := NewLexer(input)
 	for {
 		tok := l.NextToken()
-		if tok.Type == AST.TOKEN_EOF {
+		if tok.Type == ast.TOKEN_EOF {
 			break
 		}
-		if tok.Type == AST.TOKEN_ERROR {
+		if tok.Type == ast.TOKEN_ERROR {
 			t.Errorf("unexpected TOKEN_ERROR: %q at line %d col %d", tok.Value, tok.Line, tok.Column)
 		}
 	}
@@ -136,12 +136,12 @@ func TestInlinePostingComment(t *testing.T) {
 
 	// Expected sequence: INDENT, ACCOUNT, AMOUNT, COMMENT, NEWLINE
 	types := tokenTypes(tokens)
-	want := []AST.TokenType{
-		AST.TOKEN_INDENT,
-		AST.TOKEN_ACCOUNT,
-		AST.TOKEN_AMOUNT,
-		AST.TOKEN_COMMENT,
-		AST.TOKEN_NEWLINE,
+	want := []ast.TokenType{
+		ast.TOKEN_INDENT,
+		ast.TOKEN_ACCOUNT,
+		ast.TOKEN_AMOUNT,
+		ast.TOKEN_COMMENT,
+		ast.TOKEN_NEWLINE,
 	}
 	if len(types) != len(want) {
 		t.Fatalf("token count: got %d %v, want %d %v", len(types), types, len(want), want)
@@ -164,7 +164,7 @@ func TestIndentToken(t *testing.T) {
 	input := "    expenses:food  $10\n"
 	l := NewLexer(input)
 	tok := l.NextToken()
-	if tok.Type != AST.TOKEN_INDENT {
+	if tok.Type != ast.TOKEN_INDENT {
 		t.Errorf("expected TOKEN_INDENT, got %v", tok.Type)
 	}
 }
@@ -179,7 +179,7 @@ func TestAccountWithHyphen(t *testing.T) {
 	if len(tokens) < 2 {
 		t.Fatal("too few tokens")
 	}
-	if tokens[1].Type != AST.TOKEN_ACCOUNT {
+	if tokens[1].Type != ast.TOKEN_ACCOUNT {
 		t.Errorf("expected TOKEN_ACCOUNT, got %v", tokens[1].Type)
 	}
 	if tokens[1].Value != "assets:bank-of-america" {
@@ -198,12 +198,12 @@ func TestFullTransaction(t *testing.T) {
 
 	// No error tokens.
 	for _, tok := range tokens {
-		if tok.Type == AST.TOKEN_ERROR {
+		if tok.Type == ast.TOKEN_ERROR {
 			t.Errorf("unexpected TOKEN_ERROR: %q", tok.Value)
 		}
 	}
 	// First token is a date.
-	if tokens[0].Type != AST.TOKEN_DATE {
+	if tokens[0].Type != ast.TOKEN_DATE {
 		t.Errorf("first token: expected TOKEN_DATE, got %v", tokens[0].Type)
 	}
 }
@@ -212,11 +212,11 @@ func TestFullTransaction(t *testing.T) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-func collectTokens(l *Lexer) []AST.Token {
-	var out []AST.Token
+func collectTokens(l *Lexer) []ast.Token {
+	var out []ast.Token
 	for {
 		tok := l.NextToken()
-		if tok.Type == AST.TOKEN_EOF {
+		if tok.Type == ast.TOKEN_EOF {
 			break
 		}
 		out = append(out, tok)
@@ -224,8 +224,8 @@ func collectTokens(l *Lexer) []AST.Token {
 	return out
 }
 
-func tokenTypes(tokens []AST.Token) []AST.TokenType {
-	types := make([]AST.TokenType, len(tokens))
+func tokenTypes(tokens []ast.Token) []ast.TokenType {
+	types := make([]ast.TokenType, len(tokens))
 	for i, t := range tokens {
 		types[i] = t.Type
 	}

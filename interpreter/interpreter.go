@@ -1,6 +1,6 @@
-// Package Interpreter provides the core engine for DoubleBook: loading journals,
+// Package interpreter provides the core engine for DoubleBook: loading journals,
 // filtering transactions, calculating balances, and generating reports.
-package Interpreter
+package interpreter
 
 import (
 	"fmt"
@@ -8,11 +8,11 @@ import (
 	"sort"
 	"strings"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 	"doublebook/config"
 	"doublebook/journal"
-	Plugin "doublebook/plugin"
-	TemplatePlugin "doublebook/plugin/extentions"
+	"doublebook/plugin"
+	"doublebook/plugin/extensions"
 	"doublebook/utils"
 )
 
@@ -23,19 +23,20 @@ import (
 // Interpreter is the central engine that holds loaded transactions and
 // provides all query/report capabilities.
 type Interpreter struct {
-	transactions []*AST.Transaction
-	plugins      *Plugin.PluginManager
+	transactions []*ast.Transaction
+	plugins      *plugin.PluginManager
 	config       *config.Config
 }
 
 // NewInterpreter creates an Interpreter and registers built-in plugins.
 func NewInterpreter(cfg *config.Config) *Interpreter {
 	i := &Interpreter{
-		transactions: []*AST.Transaction{},
-		plugins:      Plugin.NewPluginManager(),
+		transactions: []*ast.Transaction{},
+		plugins:      plugin.NewPluginManager(),
 		config:       cfg,
 	}
-	i.plugins.Register(TemplatePlugin.NewTemplatePlugin(), nil) //nolint:errcheck
+	// Template plugin registration cannot fail as it has no configuration requirements.
+	_ = i.plugins.Register(extensions.NewTemplatePlugin(), nil)
 	return i
 }
 
@@ -88,7 +89,7 @@ func (i *Interpreter) LoadFromFile(filename string) error {
 	if err != nil {
 		// File not found is non-fatal — start with empty journal.
 		if strings.Contains(err.Error(), "no such file") {
-			i.transactions = []*AST.Transaction{}
+			i.transactions = []*ast.Transaction{}
 			return nil
 		}
 		return fmt.Errorf("loading file %q: %w", filename, err)
@@ -116,7 +117,7 @@ func (i *Interpreter) SaveToFile(filename string) error {
 
 // AppendTransaction persists txn to the journal using the journal package's
 // size-aware append logic (handles file splitting at 1 MB).
-func (i *Interpreter) AppendTransaction(txn *AST.Transaction) error {
+func (i *Interpreter) AppendTransaction(txn *ast.Transaction) error {
 	name, dir := i.journalStem()
 	return journal.AppendTransaction(name, dir, txn)
 }
@@ -128,7 +129,7 @@ func (i *Interpreter) AppendTransaction(txn *AST.Transaction) error {
 // AddTransaction validates txn, fires plugin hooks, adds it to the in-memory
 // slice, and keeps the slice sorted by date.
 // It does NOT persist to disk — call AppendTransaction or SaveToFile for that.
-func (i *Interpreter) AddTransaction(txn *AST.Transaction) error {
+func (i *Interpreter) AddTransaction(txn *ast.Transaction) error {
 	if !txn.IsBalanced() {
 		return fmt.Errorf("transaction %q is not balanced (sum: %.4f)", txn.Description, txn.Balance())
 	}
@@ -145,7 +146,7 @@ func (i *Interpreter) AddTransaction(txn *AST.Transaction) error {
 }
 
 // GetTransactions returns all in-memory transactions (unsorted copy of slice).
-func (i *Interpreter) GetTransactions() []*AST.Transaction {
+func (i *Interpreter) GetTransactions() []*ast.Transaction {
 	return i.transactions
 }
 
@@ -169,8 +170,8 @@ type Filter struct {
 }
 
 // FilteredTransactions returns the subset of transactions that satisfy f.
-func (i *Interpreter) FilteredTransactions(f Filter) []*AST.Transaction {
-	var out []*AST.Transaction
+func (i *Interpreter) FilteredTransactions(f Filter) []*ast.Transaction {
+	var out []*ast.Transaction
 	for _, txn := range i.transactions {
 		if !matchesFilter(txn, f) {
 			continue
@@ -180,7 +181,7 @@ func (i *Interpreter) FilteredTransactions(f Filter) []*AST.Transaction {
 	return out
 }
 
-func matchesFilter(txn *AST.Transaction, f Filter) bool {
+func matchesFilter(txn *ast.Transaction, f Filter) bool {
 	dateStr := txn.Date.Format("2006-01-02")
 
 	if f.BeginDate != "" && dateStr < f.BeginDate {
@@ -239,7 +240,7 @@ func (i *Interpreter) CalculateBalances() map[string]float64 {
 type AccountNode struct {
 	Name     string     // last component of the account name (e.g. "groceries")
 	FullName string     // full dotted path (e.g. "expenses:food:groceries")
-	Amount   AST.Amount // total balance (including all descendants)
+	Amount   ast.Amount // total balance (including all descendants)
 	Children []*AccountNode
 }
 
@@ -278,7 +279,7 @@ func (i *Interpreter) CalculateBalancesTree(f Filter) map[string]*AccountNode {
 				nodes[fullName] = &AccountNode{
 					Name:     parts[depth-1],
 					FullName: fullName,
-					Amount:   AST.Amount{Currency: la.currency},
+					Amount:   ast.Amount{Currency: la.currency},
 				}
 			}
 			nodes[fullName].Amount.Value += la.value
@@ -361,9 +362,9 @@ func GroupAccountsByType(nodes map[string]*AccountNode) map[string][]*AccountNod
 // IncomeStatement holds a summary of revenues vs expenses for a period.
 type IncomeStatement struct {
 	Period    string
-	Revenues  map[string]AST.Amount // account → positive revenue amount
-	Expenses  map[string]AST.Amount // account → positive expense amount
-	NetIncome AST.Amount
+	Revenues  map[string]ast.Amount // account → positive revenue amount
+	Expenses  map[string]ast.Amount // account → positive expense amount
+	NetIncome ast.Amount
 }
 
 // GenerateIncomeStatement calculates an income statement for the transactions
@@ -375,8 +376,8 @@ func (i *Interpreter) GenerateIncomeStatement(f Filter) *IncomeStatement {
 	txns := i.FilteredTransactions(f)
 
 	stmt := &IncomeStatement{
-		Revenues: make(map[string]AST.Amount),
-		Expenses: make(map[string]AST.Amount),
+		Revenues: make(map[string]ast.Amount),
+		Expenses: make(map[string]ast.Amount),
 	}
 
 	currency := i.config.Currency
@@ -414,7 +415,7 @@ func (i *Interpreter) GenerateIncomeStatement(f Filter) *IncomeStatement {
 	for _, a := range stmt.Expenses {
 		totalExpenses += a.Value
 	}
-	stmt.NetIncome = AST.Amount{
+	stmt.NetIncome = ast.Amount{
 		Value:    totalRevenue - totalExpenses,
 		Currency: currency,
 	}
@@ -459,7 +460,7 @@ func (i *Interpreter) GenerateBalanceReport() string {
 		}
 	}
 	b.WriteString("──────────────────────────────────────────────\n")
-	total := AST.Amount{Value: grandTotal, Currency: currency}
+	total := ast.Amount{Value: grandTotal, Currency: currency}
 	b.WriteString(fmt.Sprintf("%46s\n", total.String()))
 
 	return b.String()

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // Lexer holds the tokenisation state.
@@ -74,8 +74,8 @@ func (l *Lexer) skipSpaces() {
 }
 
 // tok is a compact Token constructor.
-func (l *Lexer) tok(typ AST.TokenType, value string, line, col int) AST.Token {
-	return AST.Token{Type: typ, Value: value, Line: line, Column: col}
+func (l *Lexer) tok(typ ast.TokenType, value string, line, col int) ast.Token {
+	return ast.Token{Type: typ, Value: value, Line: line, Column: col}
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ func (l *Lexer) tok(typ AST.TokenType, value string, line, col int) AST.Token {
 
 // NextToken returns the next token from the input stream.
 // Calling NextToken after TOKEN_EOF continues to return TOKEN_EOF.
-func (l *Lexer) NextToken() AST.Token {
+func (l *Lexer) NextToken() ast.Token {
 	// ── Start-of-line: detect indentation ────────────────────────────────
 	// We check this before skipping spaces so a posting's leading whitespace
 	// is emitted as TOKEN_INDENT rather than silently consumed.
@@ -97,7 +97,7 @@ func (l *Lexer) NextToken() AST.Token {
 				indent.WriteRune(l.advance())
 			}
 			if indent.Len() >= 2 {
-				return l.tok(AST.TOKEN_INDENT, indent.String(), startLine, 0)
+				return l.tok(ast.TOKEN_INDENT, indent.String(), startLine, 0)
 			}
 			// Fewer than 2 spaces: not a valid posting indent; fall through.
 		}
@@ -109,7 +109,7 @@ func (l *Lexer) NextToken() AST.Token {
 	}
 
 	if l.atEOF() {
-		return l.tok(AST.TOKEN_EOF, "", l.line, l.col)
+		return l.tok(ast.TOKEN_EOF, "", l.line, l.col)
 	}
 
 	startLine := l.line
@@ -120,7 +120,7 @@ func (l *Lexer) NextToken() AST.Token {
 	// ── Newline ───────────────────────────────────────────────────────────
 	case r == '\n':
 		l.advance()
-		return l.tok(AST.TOKEN_NEWLINE, "\n", startLine, startCol)
+		return l.tok(ast.TOKEN_NEWLINE, "\n", startLine, startCol)
 
 	// ── Comment ───────────────────────────────────────────────────────────
 	case r == ';':
@@ -130,7 +130,7 @@ func (l *Lexer) NextToken() AST.Token {
 	// '!' = pending,  '*' = cleared.  These appear after a date token.
 	case r == '*' || r == '!':
 		l.advance()
-		return l.tok(AST.TOKEN_STATUS, string(r), startLine, startCol)
+		return l.tok(ast.TOKEN_STATUS, string(r), startLine, startCol)
 
 	// ── Currency-symbol-prefixed amount: $, £, € ──────────────────────────
 	case r == '$' || r == '£' || r == '€':
@@ -154,7 +154,7 @@ func (l *Lexer) NextToken() AST.Token {
 	// ── Unknown character ─────────────────────────────────────────────────
 	default:
 		l.advance()
-		return l.tok(AST.TOKEN_ERROR, string(r), startLine, startCol)
+		return l.tok(ast.TOKEN_ERROR, string(r), startLine, startCol)
 	}
 }
 
@@ -163,12 +163,12 @@ func (l *Lexer) NextToken() AST.Token {
 // ---------------------------------------------------------------------------
 
 // scanComment reads from ';' to the end of the line (exclusive of '\n').
-func (l *Lexer) scanComment(line, col int) AST.Token {
+func (l *Lexer) scanComment(line, col int) ast.Token {
 	var b strings.Builder
 	for l.peek() != '\n' && !l.atEOF() {
 		b.WriteRune(l.advance())
 	}
-	return l.tok(AST.TOKEN_COMMENT, b.String(), line, col)
+	return l.tok(ast.TOKEN_COMMENT, b.String(), line, col)
 }
 
 // looksLikeDate returns true when the next 10 runes match the pattern
@@ -203,12 +203,12 @@ func (l *Lexer) looksLikeDate() bool {
 }
 
 // scanDate reads exactly 10 runes forming a YYYY-MM-DD date.
-func (l *Lexer) scanDate(line, col int) AST.Token {
+func (l *Lexer) scanDate(line, col int) ast.Token {
 	var b strings.Builder
 	for i := 0; i < 10; i++ {
 		b.WriteRune(l.advance())
 	}
-	return l.tok(AST.TOKEN_DATE, b.String(), line, col)
+	return l.tok(ast.TOKEN_DATE, b.String(), line, col)
 }
 
 // scanAmount handles all amount formats:
@@ -220,7 +220,7 @@ func (l *Lexer) scanDate(line, col int) AST.Token {
 //	100 BGN   -100 BGN
 //
 // The full literal is returned as TOKEN_AMOUNT; utils.ParseAmount interprets it.
-func (l *Lexer) scanAmount(line, col int) AST.Token {
+func (l *Lexer) scanAmount(line, col int) ast.Token {
 	var b strings.Builder
 
 	// Optional leading minus sign.
@@ -247,7 +247,7 @@ func (l *Lexer) scanAmount(line, col int) AST.Token {
 		b.WriteRune(l.advance()) // 3rd letter
 	}
 
-	return l.tok(AST.TOKEN_AMOUNT, b.String(), line, col)
+	return l.tok(ast.TOKEN_AMOUNT, b.String(), line, col)
 }
 
 // trailing3LetterCode peeks past the current space to see if there are 3
@@ -271,7 +271,7 @@ func (l *Lexer) trailing3LetterCode() string {
 // Note: "BGN 100" (leading currency code) is NOT handled here — the code is
 // emitted as a TOKEN_STRING and the "100" as a TOKEN_AMOUNT.  The standard
 // hledger format uses the trailing form "100 BGN" which scanAmount handles.
-func (l *Lexer) scanWord(line, col int) AST.Token {
+func (l *Lexer) scanWord(line, col int) ast.Token {
 	var b strings.Builder
 	for {
 		r := l.peek()
@@ -288,9 +288,9 @@ func (l *Lexer) scanWord(line, col int) AST.Token {
 	}
 	s := b.String()
 	if strings.Contains(s, ":") {
-		return l.tok(AST.TOKEN_ACCOUNT, s, line, col)
+		return l.tok(ast.TOKEN_ACCOUNT, s, line, col)
 	}
-	return l.tok(AST.TOKEN_STRING, s, line, col)
+	return l.tok(ast.TOKEN_STRING, s, line, col)
 }
 
 // ---------------------------------------------------------------------------

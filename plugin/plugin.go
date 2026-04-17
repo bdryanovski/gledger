@@ -1,9 +1,9 @@
 // Package Plugin defines the DoubleBook plugin interface and the DefaultPlugin
 // embed helper that provides no-op implementations for all optional hooks.
-package Plugin
+package plugin
 
 import (
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // ---------------------------------------------------------------------------
@@ -23,10 +23,10 @@ type Plugin interface {
 	Shutdown() error
 
 	// Hooks (embed DefaultPlugin for no-op defaults)
-	OnParse(transactions []*AST.Transaction) error
-	OnAdd(transaction *AST.Transaction) error
-	OnFilter(transactions []*AST.Transaction) []*AST.Transaction
-	OnReport(transactions []*AST.Transaction) string
+	OnParse(transactions []*ast.Transaction) error
+	OnAdd(transaction *ast.Transaction) error
+	OnFilter(transactions []*ast.Transaction) []*ast.Transaction
+	OnReport(transactions []*ast.Transaction) string
 	OnImport(rows []ImportRow, importMapName string) error
 }
 
@@ -53,12 +53,12 @@ type ImportRow struct {
 //	}
 type DefaultPlugin struct{}
 
-func (d *DefaultPlugin) OnParse(_ []*AST.Transaction) error { return nil }
-func (d *DefaultPlugin) OnAdd(_ *AST.Transaction) error     { return nil }
-func (d *DefaultPlugin) OnFilter(txns []*AST.Transaction) []*AST.Transaction {
+func (d *DefaultPlugin) OnParse(_ []*ast.Transaction) error { return nil }
+func (d *DefaultPlugin) OnAdd(_ *ast.Transaction) error     { return nil }
+func (d *DefaultPlugin) OnFilter(txns []*ast.Transaction) []*ast.Transaction {
 	return txns
 }
-func (d *DefaultPlugin) OnReport(_ []*AST.Transaction) string      { return "" }
+func (d *DefaultPlugin) OnReport(_ []*ast.Transaction) string      { return "" }
 func (d *DefaultPlugin) OnImport(_ []ImportRow, _ string) error    { return nil }
 func (d *DefaultPlugin) Shutdown() error                           { return nil }
 func (d *DefaultPlugin) Version() string                           { return "0.0.0" }

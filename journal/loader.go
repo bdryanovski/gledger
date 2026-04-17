@@ -16,8 +16,8 @@ import (
 	"sort"
 	"strings"
 
-	AST "doublebook/ast"
-	Parser "doublebook/parser"
+	"doublebook/ast"
+	"doublebook/parser"
 	"doublebook/utils"
 )
 
@@ -81,9 +81,9 @@ func Resolve(name string, dataDir string) []string {
 //
 // If no journal files are found an empty (non-nil) slice is returned — this
 // is not an error; the user may not have any transactions yet.
-func Load(name string, dataDir string) ([]*AST.Transaction, error) {
+func Load(name string, dataDir string) ([]*ast.Transaction, error) {
 	paths := Resolve(name, dataDir)
-	var all []*AST.Transaction
+	var all []*ast.Transaction
 	for _, p := range paths {
 		txns, err := LoadFromPath(p)
 		if err != nil {
@@ -96,13 +96,13 @@ func Load(name string, dataDir string) ([]*AST.Transaction, error) {
 }
 
 // LoadFromPath parses a single journal file at an exact filesystem path.
-func LoadFromPath(path string) ([]*AST.Transaction, error) {
+func LoadFromPath(path string) ([]*ast.Transaction, error) {
 	path = utils.ExpandHome(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	txns, err := Parser.ParseTransactions(string(data))
+	txns, err := parser.ParseTransactions(string(data))
 	if err != nil {
 		return nil, fmt.Errorf("parse error in %q: %w", path, err)
 	}
@@ -130,7 +130,7 @@ func existingPaths(candidates []string) []string {
 
 // sortByDate sorts transactions ascending by their date field.
 // YYYY-MM-DD string comparison produces the same order as chronological.
-func sortByDate(txns []*AST.Transaction) {
+func sortByDate(txns []*ast.Transaction) {
 	sort.Slice(txns, func(i, j int) bool {
 		return txns[i].Date.Before(txns[j].Date)
 	})

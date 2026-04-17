@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	AST "doublebook/ast"
+	"doublebook/ast"
 )
 
 // ---------------------------------------------------------------------------
@@ -26,32 +26,32 @@ func openMem(t *testing.T) *DB {
 	return d
 }
 
-func sampleTxns() []*AST.Transaction {
+func sampleTxns() []*ast.Transaction {
 	d1, _ := time.Parse("2006-01-02", "2025-01-15")
 	d2, _ := time.Parse("2006-01-02", "2025-01-16")
 	d3, _ := time.Parse("2006-01-02", "2025-02-01")
 
-	t1 := AST.NewTransaction(d1, "Grocery Store")
+	t1 := ast.NewTransaction(d1, "Grocery Store")
 	t1.ID = "aabbccdd11223344"
 	t1.Tags["category"] = "food"
 	t1.Postings = append(t1.Postings,
-		AST.NewPosting("expenses:groceries", AST.Amount{Value: 45.32, Currency: "USD"}),
-		AST.NewPosting("assets:checking", AST.Amount{Value: -45.32, Currency: "USD"}),
+		ast.NewPosting("expenses:groceries", ast.Amount{Value: 45.32, Currency: "USD"}),
+		ast.NewPosting("assets:checking", ast.Amount{Value: -45.32, Currency: "USD"}),
 	)
 
-	t2 := AST.NewTransaction(d2, "Salary Payment")
+	t2 := ast.NewTransaction(d2, "Salary Payment")
 	t2.Postings = append(t2.Postings,
-		AST.NewPosting("assets:checking", AST.Amount{Value: 2000.00, Currency: "USD"}),
-		AST.NewPosting("income:salary", AST.Amount{Value: -2000.00, Currency: "USD"}),
+		ast.NewPosting("assets:checking", ast.Amount{Value: 2000.00, Currency: "USD"}),
+		ast.NewPosting("income:salary", ast.Amount{Value: -2000.00, Currency: "USD"}),
 	)
 
-	t3 := AST.NewTransaction(d3, "Electric Bill")
+	t3 := ast.NewTransaction(d3, "Electric Bill")
 	t3.Postings = append(t3.Postings,
-		AST.NewPosting("expenses:utilities", AST.Amount{Value: 89.50, Currency: "USD"}),
-		AST.NewPosting("assets:checking", AST.Amount{Value: -89.50, Currency: "USD"}),
+		ast.NewPosting("expenses:utilities", ast.Amount{Value: 89.50, Currency: "USD"}),
+		ast.NewPosting("assets:checking", ast.Amount{Value: -89.50, Currency: "USD"}),
 	)
 
-	return []*AST.Transaction{t1, t2, t3}
+	return []*ast.Transaction{t1, t2, t3}
 }
 
 // ---------------------------------------------------------------------------
