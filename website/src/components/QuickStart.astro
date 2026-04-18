@@ -1,0 +1,171 @@
+---
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+---
+
+<section class="quickstart section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-icon">[>]</span>
+      <h2>Quick Start</h2>
+      <p class="section-subtitle">Get up and running in under a minute</p>
+    </div>
+    
+    <div class="steps">
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">01</span>
+          <h3>Install</h3>
+        </div>
+        <div class="step-content">
+          <pre><code class="language-bash"># Clone and build
+git clone https://github.com/yourusername/gledger.git
+cd gledger && make build
+
+# Or with web UI included
+make build/full</code></pre>
+        </div>
+      </div>
+      
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">02</span>
+          <h3>Create Journal</h3>
+        </div>
+        <div class="step-content">
+          <pre><code class="language-plaintext"># ~/.doublebook/data.journal
+2025-01-15 Opening Balance
+    assets:checking          $5,000.00
+    equity:opening          -$5,000.00
+
+2025-01-16 Coffee Shop
+    expenses:dining             $4.50
+    assets:checking            -$4.50</code></pre>
+        </div>
+      </div>
+      
+      <div class="step">
+        <div class="step-header">
+          <span class="step-number">03</span>
+          <h3>Explore</h3>
+        </div>
+        <div class="step-content">
+          <pre><code class="language-bash"># View balances
+doublebook balance
+
+# See all transactions
+doublebook register
+
+# Launch TUI
+doublebook
+
+# Query with FQL
+doublebook fql --query "SELECT * FROM transactions"</code></pre>
+        </div>
+      </div>
+    </div>
+    
+    <div class="quickstart-footer">
+      <a href={`${base}docs/`} class="btn">
+        <span>[D]</span> Full Documentation
+      </a>
+      <a href={`${base}docs/examples/`} class="btn btn-secondary">
+        <span>[E]</span> See Examples
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .section-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+  }
+  
+  .section-icon {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-accent-muted);
+    display: block;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .section-header h2 {
+    margin-top: 0;
+    border: none;
+    padding: 0;
+  }
+  
+  .section-subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+  }
+  
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+  
+  .step {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--space-lg);
+    align-items: start;
+  }
+  
+  .step-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+  
+  .step-number {
+    font-family: var(--font-display);
+    font-size: 3rem;
+    color: var(--color-accent-muted);
+    line-height: 1;
+  }
+  
+  .step h3 {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  
+  .step-content {
+    background: var(--color-bg-card);
+    border: var(--border-pixel);
+  }
+  
+  .step-content pre {
+    margin: 0;
+    border: none;
+  }
+  
+  .quickstart-footer {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-md);
+    margin-top: var(--space-xl);
+    flex-wrap: wrap;
+  }
+  
+  @media (max-width: 768px) {
+    .step {
+      grid-template-columns: 1fr;
+      gap: var(--space-md);
+    }
+    
+    .step-header {
+      flex-direction: row;
+      align-items: baseline;
+      gap: var(--space-md);
+    }
+    
+    .step-number {
+      font-size: 2rem;
+    }
+  }
+</style>

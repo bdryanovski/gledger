@@ -1,0 +1,163 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Getting Started
+description: Learn how to install and use DoubleBook for plain-text accounting
+---
+
+# Getting Started with DoubleBook
+
+DoubleBook is a plain-text double-entry accounting application compatible with the [hledger](https://hledger.org/) journal format. Track your finances in human-readable text files that you can version control with git.
+
+## What is Plain Text Accounting?
+
+Plain text accounting means your financial data is stored in simple text files rather than proprietary databases. This approach offers several advantages:
+
+- **Portability**: Your data works everywhere text works
+- **Longevity**: Text files are future-proof
+- **Transparency**: See exactly what's in your records
+- **Version Control**: Track every change with git
+- **Automation**: Script your finances with standard tools
+
+## Prerequisites
+
+- **Go 1.21** or later
+- **Node.js 18+** (only if building the Web UI)
+- **Git** (recommended for version control)
+
+## Installation
+
+### Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gledger.git
+cd gledger
+
+# Build the binary
+make build
+
+# Or build with web UI included
+make build/full
+```
+
+### Verify Installation
+
+```bash
+doublebook version
+# DoubleBook v0.1.0
+
+doublebook help
+# Shows available commands
+```
+
+## Your First Journal
+
+Create a journal file at `~/.doublebook/data.journal`:
+
+```plaintext
+; My Personal Finances
+; =====================
+
+2025-01-01 Opening Balance
+    assets:checking          $5,000.00
+    equity:opening          -$5,000.00
+
+2025-01-05 Grocery Store
+    expenses:groceries          $78.50
+    assets:checking            -$78.50
+
+2025-01-10 * Paycheck
+    assets:checking          $2,500.00
+    income:salary           -$2,500.00
+
+2025-01-15 Electric Bill
+    expenses:utilities          $95.00
+    assets:checking            -$95.00
+```
+
+### Journal Format Rules
+
+1. **Date and description** on the first line: `YYYY-MM-DD Description`
+2. **Postings** indented on following lines: `account  amount`
+3. **Amounts must balance** to zero (debits = credits)
+4. **Comments** start with `;` or `#`
+5. **Status markers**: `*` for cleared, `!` for pending
+
+## Basic Commands
+
+### View Account Balances
+
+```bash
+# Simple balance view
+doublebook balance
+
+# Tree structure
+doublebook balance --tree
+
+# Filter by date range
+doublebook --begin 2025-01-01 --end 2025-01-31 balance
+```
+
+### Transaction Register
+
+```bash
+# All transactions with running totals
+doublebook register
+
+# Filter by account
+doublebook register --account expenses
+
+# Limit results
+doublebook register --limit 10
+```
+
+### Add Transactions
+
+```bash
+# Interactive mode
+doublebook add
+
+# Command line
+doublebook add --date 2025-01-20 --description "Coffee" \
+  --amount 4.50 --from assets:checking --to expenses:dining
+```
+
+### Launch Interfaces
+
+```bash
+# Terminal UI (TUI)
+doublebook
+
+# Web interface
+doublebook web --port 8080
+
+# REST API server
+doublebook api --port 5555
+```
+
+## Configuration
+
+Create a config file at `~/.doublebook/config.yaml`:
+
+```yaml
+# Default journal name (without .journal extension)
+journal_name: data
+
+# Directory for journal files
+data_dir: ~/.doublebook
+
+# Currency symbol
+default_currency: $
+
+# Plugins to load
+plugins:
+  - sql-export
+  - recurring
+```
+
+## Next Steps
+
+- [Journal Format Guide](/gledger/docs/journal-format/) - Learn the full syntax
+- [CLI Reference](/gledger/docs/cli-reference/) - All available commands
+- [FQL Query Language](/gledger/docs/fql/) - Query your data with SQL-like syntax
+- [Examples](/gledger/docs/examples/) - Common workflows and patterns

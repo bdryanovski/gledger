@@ -1,0 +1,165 @@
+---
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+
+const reasons = [
+  {
+    title: 'Your Data, Your Rules',
+    description: 'No cloud lock-in, no subscriptions, no data mining. Plain text files that work offline and belong to you.'
+  },
+  {
+    title: 'Git-Friendly',
+    description: 'Track every financial change with version control. Diff your finances, branch for scenarios, collaborate with others.'
+  },
+  {
+    title: 'Future-Proof',
+    description: 'Text files are forever readable. Your financial records from decades ago will still work in decades to come.'
+  },
+  {
+    title: 'Automation Ready',
+    description: 'Script your finances with the CLI, integrate with CI/CD, automate reports, build custom workflows.'
+  }
+];
+---
+
+<section class="why section section-alt">
+  <div class="container">
+    <div class="why-content">
+      <div class="why-text">
+        <span class="section-icon">[?]</span>
+        <h2>Why Plain Text Accounting?</h2>
+        
+        <div class="reasons">
+          {reasons.map((reason, i) => (
+            <div class="reason">
+              <span class="reason-number">{String(i + 1).padStart(2, '0')}</span>
+              <div>
+                <h4>{reason.title}</h4>
+                <p>{reason.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <a href={`${base}docs/`} class="btn">
+          Learn More
+        </a>
+      </div>
+      
+      <div class="why-example">
+        <div class="example-card">
+          <h4>Journal Entry</h4>
+          <pre><code>2025-01-15 Grocery Store
+    expenses:groceries     $45.32
+    assets:checking       -$45.32
+
+; Comments keep notes
+2025-01-16 * Monthly Rent
+    expenses:rent       $1,200.00
+    assets:checking    -$1,200.00</code></pre>
+        </div>
+        
+        <div class="compatibility">
+          <span class="compat-label">[~]</span>
+          <span>Compatible with hledger, ledger, and beancount formats</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .why h2 {
+    margin-top: 0;
+    border: none;
+  }
+  
+  .section-icon {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-accent-muted);
+    display: block;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .why-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: start;
+  }
+  
+  .reasons {
+    margin: var(--space-lg) 0;
+  }
+  
+  .reason {
+    display: flex;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-bg-card);
+    border-left: 3px solid var(--color-accent-muted);
+  }
+  
+  .reason-number {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-accent-muted);
+    line-height: 1;
+  }
+  
+  .reason h4 {
+    margin: 0 0 var(--space-xs);
+    color: var(--color-text-primary);
+  }
+  
+  .reason p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+  }
+  
+  .example-card {
+    background: var(--color-bg-dark);
+    border: var(--border-pixel);
+    padding: var(--space-md);
+  }
+  
+  .example-card h4 {
+    font-family: var(--font-display);
+    color: var(--color-accent-highlight);
+    margin-bottom: var(--space-md);
+    font-size: 1.125rem;
+  }
+  
+  .example-card pre {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  
+  .compatibility {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+  }
+  
+  .compat-label {
+    font-family: var(--font-display);
+    color: var(--color-accent-muted);
+  }
+  
+  @media (max-width: 900px) {
+    .why-content {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

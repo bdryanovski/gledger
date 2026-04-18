@@ -1,0 +1,232 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Architecture
+description: Understanding DoubleBook's internal architecture and code organization
+---
+
+# Architecture Overview
+
+DoubleBook is built in Go with a modular architecture that separates concerns into distinct packages. This guide explains how the pieces fit together.
+
+## Project Structure
+
+```plaintext
+gledger/
+├── ast/            # Abstract Syntax Tree types
+├── lexer/          # Tokenizer for journal files
+├── parser/         # Parser for journal format
+├── interpreter/    # Core business logic engine
+├── journal/        # Journal file loading/writing
+├── cli/            # Command-line interface
+│   └── commands/   # CLI command implementations
+├── ui/             # Terminal UI (Bubbletea)
+├── fql/            # Financial Query Language
+├── db/             # SQLite cache/backend
+├── config/         # Configuration management
+├── currency/       # Currency conversion
+├── importer/       # CSV import functionality
+├── plugin/         # Plugin system
+├── api/            # REST API server
+├── web/            # Web server with embedded frontend
+├── web-ui/         # React frontend source
+├── utils/          # Shared utilities
+├── sample/         # Sample CSV and import mappings
+├── example/        # Example journal files
+└── docs/           # Documentation
+```
+
+## Core Components
+
+### Lexer & Parser
+
+The journal parsing pipeline follows a classic compiler architecture:
+
+```plaintext
+Journal File → Lexer → Tokens → Parser → AST
+```
+
+**Lexer** (`lexer/`) tokenizes the journal file into a stream of tokens:
+- Dates, descriptions, account names
+- Amounts with currency symbols
+- Comments, status markers
+- Whitespace handling for posting detection
+
+**Parser** (`parser/`) builds an Abstract Syntax Tree from tokens:
+- Transactions with postings
+- Account hierarchies
+- Amount validation
+- Balance assertions
+
+### AST (Abstract Syntax Tree)
+
+The `ast/` package defines the data structures:
+
+```go
+type Transaction struct {
+    ID          string
+    Date        time.Time
+    Status      string      // "", "*", "!"
+    Description string
+    Postings    []*Posting
+    Tags        map[string]string
+    Comment     string
+}
+
+type Posting struct {
+    Account  string
+    Amount   *Amount
+    Comment  string
+}
+
+type Amount struct {
+    Value    float64
+    Currency string
+}
+```
+
+### Interpreter
+
+The `interpreter/` package is the business logic engine:
+
+- Loads and validates journal files
+- Executes queries and filters
+- Calculates balances and registers
+- Coordinates plugin lifecycle
+
+```go
+type Interpreter struct {
+    transactions []*ast.Transaction
+    accounts     map[string]*Account
+    plugins      *plugin.Manager
+    config       *config.Config
+}
+```
+
+### Financial Query Language (FQL)
+
+The `fql/` package implements a SQL-like query engine:
+
+```plaintext
+Query String → FQL Lexer → FQL Parser → Query Plan → Executor → Results
+```
+
+- Virtual tables: `transactions`, `accounts`, `spending`
+- SQL subset: SELECT, WHERE, GROUP BY, ORDER BY, LIMIT
+- Aggregate functions: COUNT, SUM, AVG, MIN, MAX
+
+### User Interfaces
+
+**CLI** (`cli/`): Command-line interface using [cobra](https://github.com/spf13/cobra)
+- Commands: balance, register, add, import, fql, etc.
+- Global flags for filtering and configuration
+
+**TUI** (`ui/`): Terminal UI using [bubbletea](https://github.com/charmbracelet/bubbletea)
+- Interactive navigation of accounts and transactions
+- Real-time filtering and search
+- Keyboard-driven workflow
+
+**Web** (`web/`, `web-ui/`): React-based dashboard
+- Embedded frontend served by Go
+- Real-time updates via REST API
+- Charts and visualizations
+
+**API** (`api/`): REST API server
+- JSON endpoints for all operations
+- FQL query endpoint
+- CORS support for external clients
+
+## Data Flow
+
+### Reading a Journal
+
+```plaintext
+1. config.Load()          → Load ~/.doublebook/config.yaml
+2. journal.Load()         → Read journal file
+3. lexer.Tokenize()       → Convert to tokens
+4. parser.Parse()         → Build AST
+5. interpreter.Load()     → Process transactions
+6. plugin.OnParse()       → Run plugin hooks
+```
+
+### Executing a Query
+
+```plaintext
+1. User runs: doublebook balance --account expenses
+2. CLI parses flags, creates filter
+3. Interpreter filters transactions
+4. Balance calculator aggregates by account
+5. Output formatter renders result
+```
+
+### Adding a Transaction
+
+```plaintext
+1. User runs: doublebook add ...
+2. CLI validates input
+3. Parser creates Transaction AST
+4. Validator ensures balance
+5. plugin.OnAdd() hooks run
+6. journal.Append() writes to file
+```
+
+## Plugin Architecture
+
+Plugins hook into the transaction lifecycle:
+
+```go
+type Plugin interface {
+    // Identity
+    Name() string
+    Version() string
+    Description() string
+
+    // Lifecycle
+    Initialize(config map[string]interface{}) error
+    Shutdown() error
+
+    // Hooks
+    OnParse(transactions []*ast.Transaction) error
+    OnAdd(transaction *ast.Transaction) error
+    OnFilter(transactions []*ast.Transaction) []*ast.Transaction
+    OnReport(transactions []*ast.Transaction) string
+    OnImport(rows []ImportRow, importMapName string) error
+}
+```
+
+See [Plugin System](/gledger/developers/plugins/) for detailed documentation.
+
+## Build System
+
+The `Makefile` provides common operations:
+
+```bash
+make build        # Build binary (no web)
+make build/full   # Build with web UI
+make test         # Run all tests
+make test/cover   # Tests with coverage
+make audit        # Run quality checks
+make tidy         # Format code
+make web-build    # Build React frontend
+make dev-web      # Run Vite dev server
+```
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language | Go 1.21+ |
+| CLI Framework | [Cobra](https://github.com/spf13/cobra) |
+| TUI Framework | [Bubbletea](https://github.com/charmbracelet/bubbletea) |
+| Web Frontend | React + Vite |
+| Database | SQLite (for caching/plugins) |
+| Configuration | YAML |
+
+## Code Style
+
+- Follow standard Go conventions (`go fmt`)
+- Use meaningful package names
+- Write tests for new functionality
+- Document exported functions
+- Keep functions focused and small
+
+See [Contributing](/gledger/developers/contributing/) for detailed guidelines.

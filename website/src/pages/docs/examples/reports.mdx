@@ -1,0 +1,303 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Reports & Analysis
+description: Generate financial reports and analyze your data with DoubleBook
+---
+
+# Reports & Analysis
+
+DoubleBook provides multiple ways to analyze your financial data and generate reports.
+
+## Built-in Reports
+
+### Balance Report
+
+```bash
+# All account balances
+doublebook balance
+
+# Tree view (hierarchical)
+doublebook balance --tree
+
+# Specific account type
+doublebook balance --account assets
+
+# Limited depth
+doublebook balance --tree --depth 2
+```
+
+### Income Statement
+
+```bash
+# Current period
+doublebook is
+
+# Specific period
+doublebook --begin 2025-01-01 --end 2025-03-31 is
+```
+
+Output:
+```
+Income Statement (2025-01-01 to 2025-03-31)
+==========================================
+
+Income:
+  income:salary              $7,500.00
+  income:freelance             $500.00
+                            ----------
+  Total Income               $8,000.00
+
+Expenses:
+  expenses:rent              $3,000.00
+  expenses:food              $1,200.00
+  expenses:utilities           $450.00
+  expenses:transport           $300.00
+                            ----------
+  Total Expenses             $4,950.00
+
+==========================================
+Net Income                   $3,050.00
+```
+
+### Transaction Register
+
+```bash
+# All transactions with running total
+doublebook register
+
+# Filtered by account
+doublebook register --account expenses:food
+
+# Date range
+doublebook --begin 2025-01-01 register
+```
+
+## FQL Analytics
+
+### Spending Analysis
+
+```sql
+-- Monthly spending trend
+SELECT month, SUM(amount) AS total
+FROM spending
+WHERE account LIKE 'expenses:%'
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+
+-- Top expense categories
+SELECT account, SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+GROUP BY account
+ORDER BY total DESC
+LIMIT 10
+
+-- Daily average spending
+SELECT 
+  AVG(daily_total) AS avg_daily_spending
+FROM (
+  SELECT date, SUM(amount) AS daily_total
+  FROM transactions
+  WHERE account LIKE 'expenses:%'
+  GROUP BY date
+)
+```
+
+### Income Analysis
+
+```sql
+-- Income sources
+SELECT account, SUM(-amount) AS total
+FROM transactions
+WHERE account LIKE 'income:%'
+GROUP BY account
+ORDER BY total DESC
+
+-- Monthly income trend
+SELECT month, SUM(-amount) AS income
+FROM spending
+WHERE account LIKE 'income:%'
+GROUP BY month
+ORDER BY month
+```
+
+### Cash Flow
+
+```sql
+-- Monthly cash flow (income - expenses)
+SELECT 
+  month,
+  SUM(CASE WHEN account LIKE 'income:%' THEN -amount ELSE 0 END) AS income,
+  SUM(CASE WHEN account LIKE 'expenses:%' THEN amount ELSE 0 END) AS expenses,
+  SUM(CASE WHEN account LIKE 'income:%' THEN -amount ELSE -amount END) AS net
+FROM spending
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+### Account Activity
+
+```sql
+-- Most active accounts
+SELECT account, transaction_count, total_amount
+FROM accounts
+ORDER BY transaction_count DESC
+LIMIT 10
+
+-- Inactive accounts (no recent activity)
+SELECT account, last_transaction
+FROM accounts
+WHERE last_transaction < '2024-01-01'
+ORDER BY last_transaction
+```
+
+## Export Options
+
+### SQLite Export
+
+Export to a queryable SQLite database:
+
+```bash
+doublebook plugin run sql-export --output ~/finance.db
+```
+
+Then use any SQL tool:
+
+```bash
+sqlite3 ~/finance.db "
+SELECT strftime('%Y-%m', date) AS month,
+       SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) AS expenses,
+       SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) AS income
+FROM transactions
+GROUP BY month
+ORDER BY month DESC
+"
+```
+
+### CSV Export
+
+```bash
+# Via FQL
+doublebook fql --query "SELECT * FROM transactions" > transactions.csv
+
+# Via API
+curl "http://localhost:5555/api/transactions?format=csv" > export.csv
+```
+
+## Custom Reports
+
+### Net Worth Report
+
+```bash
+#!/bin/bash
+# networth.sh
+
+echo "=== Net Worth Report ==="
+echo "Date: $(date +%Y-%m-%d)"
+echo ""
+
+echo "ASSETS:"
+doublebook balance --account assets
+
+echo ""
+echo "LIABILITIES:"
+doublebook balance --account liabilities
+
+echo ""
+ASSETS=$(doublebook fql --query "SELECT SUM(total_amount) FROM accounts WHERE account LIKE 'assets:%'" | tail -1)
+LIABILITIES=$(doublebook fql --query "SELECT SUM(total_amount) FROM accounts WHERE account LIKE 'liabilities:%'" | tail -1)
+
+echo "===================="
+echo "Net Worth: \$$(echo "$ASSETS - $LIABILITIES" | bc)"
+```
+
+### Spending by Merchant
+
+```sql
+-- Group by description (merchant)
+SELECT 
+  description,
+  COUNT(*) AS transactions,
+  SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+GROUP BY description
+ORDER BY total DESC
+LIMIT 20
+```
+
+### Year-over-Year Comparison
+
+```sql
+SELECT 
+  year,
+  SUM(CASE WHEN account LIKE 'income:%' THEN -amount ELSE 0 END) AS income,
+  SUM(CASE WHEN account LIKE 'expenses:%' THEN amount ELSE 0 END) AS expenses
+FROM spending
+GROUP BY year
+ORDER BY year
+```
+
+## Visualization
+
+### Web UI Charts
+
+Start the web interface for visual reports:
+
+```bash
+doublebook web
+```
+
+Features:
+- Pie charts for expense breakdown
+- Line charts for trends
+- Bar charts for comparisons
+
+### External Tools
+
+Export data for visualization tools:
+
+```bash
+# For spreadsheets
+doublebook fql --query "SELECT month, account, SUM(amount) FROM spending GROUP BY month, account" > pivot_data.csv
+
+# Import to Google Sheets, Excel, or LibreOffice
+```
+
+## Scheduled Reports
+
+### Cron Job for Weekly Summary
+
+```bash
+# Add to crontab: crontab -e
+# Every Monday at 9am
+0 9 * * 1 /path/to/weekly-report.sh | mail -s "Weekly Finance Summary" you@email.com
+```
+
+### weekly-report.sh
+
+```bash
+#!/bin/bash
+LAST_WEEK=$(date -d "7 days ago" +%Y-%m-%d)
+TODAY=$(date +%Y-%m-%d)
+
+echo "Weekly Financial Summary"
+echo "Period: $LAST_WEEK to $TODAY"
+echo ""
+
+doublebook --begin $LAST_WEEK --end $TODAY fql --query "
+SELECT account, SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+GROUP BY account
+ORDER BY total DESC
+"
+
+echo ""
+echo "Total spent this week:"
+doublebook --begin $LAST_WEEK --end $TODAY fql --query "
+SELECT SUM(amount) FROM transactions WHERE account LIKE 'expenses:%'
+"
+```

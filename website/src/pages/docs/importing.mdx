@@ -1,0 +1,197 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: CSV Import
+description: Import bank statements and CSV files into DoubleBook
+---
+
+# CSV Import
+
+DoubleBook can import transactions from CSV files, making it easy to bring in bank statements and other financial data.
+
+## Basic Usage
+
+```bash
+# Preview what will be imported (dry run)
+doublebook import --file statement.csv --map bank.yaml --dry-run
+
+# Actually import transactions
+doublebook import --file statement.csv --map bank.yaml
+```
+
+## Import Mapping File
+
+Create a YAML file that describes your CSV format:
+
+```yaml
+# bank-import.yaml
+
+# CSV parsing options
+skip_lines: 1           # Skip header row
+date_column: 0          # Column index for date
+date_format: "01/02/2006"  # Go date format
+description_column: 2   # Column index for description
+amount_column: 3        # Column index for amount
+
+# Account mapping
+source_account: assets:checking
+
+# Default accounts for unmatched transactions
+default_expense: expenses:uncategorized
+default_income: income:other
+
+# Categorization rules (checked in order)
+rules:
+  - match: "AMAZON|AMZN"
+    account: expenses:shopping
+    
+  - match: "WHOLE FOODS|TRADER JOE"
+    account: expenses:food:groceries
+    
+  - match: "SHELL|CHEVRON|EXXON"
+    account: expenses:transport:gas
+    
+  - match: "NETFLIX|SPOTIFY|HULU"
+    account: expenses:entertainment:streaming
+    
+  - match: "PAYROLL|DIRECT DEP|SALARY"
+    account: income:salary
+    negate: true  # Flip sign for income
+```
+
+## Date Formats
+
+Use Go's reference date format (`Mon Jan 2 15:04:05 MST 2006`):
+
+| Format | Example | Pattern |
+|--------|---------|---------|
+| MM/DD/YYYY | 01/15/2025 | `01/02/2006` |
+| DD/MM/YYYY | 15/01/2025 | `02/01/2006` |
+| YYYY-MM-DD | 2025-01-15 | `2006-01-02` |
+| DD-Mon-YYYY | 15-Jan-2025 | `02-Jan-2006` |
+
+## Rule Matching
+
+Rules use regular expressions to match transaction descriptions:
+
+```yaml
+rules:
+  # Simple text match
+  - match: "AMAZON"
+    account: expenses:shopping
+    
+  # Multiple patterns with OR
+  - match: "UBER|LYFT|TAXI"
+    account: expenses:transport:rideshare
+    
+  # Case insensitive by default
+  - match: "starbucks|Starbucks|STARBUCKS"
+    account: expenses:food:coffee
+    
+  # Partial match
+  - match: "INTEREST"
+    account: income:interest
+    negate: true
+```
+
+## Rule Options
+
+| Option | Description |
+|--------|-------------|
+| `match` | Regex pattern to match description |
+| `account` | Target account for matching transactions |
+| `negate` | Flip the sign of the amount (for income) |
+| `tags` | Add tags to matching transactions |
+| `description` | Override the transaction description |
+
+## Advanced Mapping
+
+### Multiple Amount Columns
+
+Some banks use separate debit/credit columns:
+
+```yaml
+debit_column: 3
+credit_column: 4
+# Or use a single column with negative values
+amount_column: 3
+```
+
+### Currency Column
+
+```yaml
+currency_column: 5
+default_currency: USD
+```
+
+### Custom Field Mapping
+
+```yaml
+# Extra columns to capture as tags
+tag_columns:
+  - column: 6
+    tag_name: reference
+  - column: 7
+    tag_name: category
+```
+
+## Example Workflow
+
+### 1. Download Statement
+
+Export your bank statement as CSV.
+
+### 2. Examine the Format
+
+```bash
+head -5 statement.csv
+# Date,Type,Description,Amount,Balance
+# 01/15/2025,DEBIT,AMAZON PURCHASE,-$45.99,$1234.56
+# ...
+```
+
+### 3. Create Mapping File
+
+```yaml
+# my-bank.yaml
+skip_lines: 1
+date_column: 0
+date_format: "01/02/2006"
+description_column: 2
+amount_column: 3
+source_account: assets:checking
+default_expense: expenses:uncategorized
+
+rules:
+  - match: "AMAZON"
+    account: expenses:shopping
+```
+
+### 4. Test Import
+
+```bash
+doublebook import --file statement.csv --map my-bank.yaml --dry-run
+```
+
+### 5. Review and Import
+
+```bash
+doublebook import --file statement.csv --map my-bank.yaml
+```
+
+### 6. Review Uncategorized
+
+```bash
+doublebook fql --query "
+  SELECT date, description, amount 
+  FROM transactions 
+  WHERE account = 'expenses:uncategorized'
+"
+```
+
+## Tips
+
+1. **Start with dry-run**: Always preview before importing
+2. **Build rules incrementally**: Add rules as you encounter new merchants
+3. **Use specific patterns**: More specific matches prevent false positives
+4. **Keep mapping files**: Reuse them for future imports from the same bank
+5. **Review uncategorized**: Periodically check and add new rules

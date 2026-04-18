@@ -1,0 +1,154 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Web Interface
+description: Using the DoubleBook web dashboard
+---
+
+# Web Interface
+
+DoubleBook includes a React-based web dashboard for visualizing your finances.
+
+## Starting the Web Server
+
+```bash
+# Start on default port (8080)
+doublebook web
+
+# Custom port
+doublebook web --port 3000
+```
+
+Then open `http://localhost:8080` in your browser.
+
+## Requirements
+
+The web UI must be built into the binary:
+
+```bash
+# Build with web UI included
+make build/full
+
+# This runs:
+# 1. npm install in web-ui/
+# 2. npm run build (creates web/static/dist/)
+# 3. go build with embedded assets
+```
+
+## Features
+
+### Dashboard
+
+The main dashboard shows:
+
+- **Account balances**: Current balance for all accounts
+- **Recent transactions**: Latest activity
+- **Spending breakdown**: Pie chart of expense categories
+- **Trends**: Line charts of income vs expenses over time
+
+### Accounts View
+
+- Hierarchical account tree
+- Click to expand/collapse
+- Filter by account type (assets, expenses, etc.)
+- Running balance for each account
+
+### Transactions View
+
+- Paginated transaction list
+- Search and filter by:
+  - Date range
+  - Account
+  - Description
+  - Amount range
+- Sort by date, amount, or description
+
+### Reports
+
+- Income statement
+- Balance sheet
+- Monthly/yearly summaries
+- Export to CSV
+
+### FQL Console
+
+Run FQL queries directly in the browser:
+
+```sql
+SELECT month, SUM(amount) AS total
+FROM spending
+WHERE account LIKE 'expenses:%'
+GROUP BY month
+ORDER BY month DESC
+```
+
+Results display as:
+- Tables for general queries
+- Bar charts for category comparisons
+- Line charts for time series
+
+## Configuration
+
+The web server reads from the same configuration as the CLI:
+
+```yaml
+# ~/.doublebook/config.yaml
+journal_name: data
+data_dir: ~/.doublebook
+```
+
+## API Backend
+
+The web UI communicates with the REST API. You can also use the API directly:
+
+```bash
+# Start API server separately
+doublebook api --port 5555
+
+# Web UI can connect to external API
+doublebook web --api-url http://localhost:5555
+```
+
+## Development
+
+For web UI development with hot reload:
+
+```bash
+# Terminal 1: Start API server
+doublebook api --port 5555
+
+# Terminal 2: Start Vite dev server
+make dev-web
+# or: cd web-ui && npm run dev
+```
+
+The Vite dev server proxies API requests to `localhost:5555`.
+
+## Security Notes
+
+- The web server binds to `localhost` by default
+- No authentication is built-in
+- For remote access, use a reverse proxy with authentication
+- Do not expose directly to the internet
+
+## Troubleshooting
+
+### "Web UI not found"
+
+Ensure you built with `make build/full`:
+
+```bash
+make web-install
+make build/full
+```
+
+### Blank page
+
+Check browser console for errors. Ensure the API is responding:
+
+```bash
+curl http://localhost:8080/api/health
+```
+
+### Stale data
+
+The web UI caches data. Refresh the page or click the refresh button to reload from the journal file.

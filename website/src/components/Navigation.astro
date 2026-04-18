@@ -1,0 +1,168 @@
+---
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+
+const navLinks = [
+  { href: base, label: 'Home', icon: '[H]' },
+  { href: `${base}docs/`, label: 'Documentation', icon: '[D]' },
+  { href: `${base}developers/`, label: 'Developers', icon: '[<>]' },
+  { href: 'https://github.com/yourusername/gledger', label: 'GitHub', icon: '[G]', external: true },
+];
+---
+
+<nav class="nav">
+  <div class="nav-container container">
+    <a href={base} class="nav-logo">
+      <span class="logo-icon">$</span>
+      <span class="logo-text">DoubleBook</span>
+    </a>
+    
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="toggle-bar"></span>
+      <span class="toggle-bar"></span>
+      <span class="toggle-bar"></span>
+    </button>
+    
+    <ul class="nav-links">
+      {navLinks.map(link => (
+        <li>
+          <a 
+            href={link.href} 
+            class="nav-link"
+            {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          >
+            <span class="nav-icon">{link.icon}</span>
+            <span class="nav-label">{link.label}</span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    background: var(--color-bg-medium);
+    border-bottom: var(--border-pixel);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md);
+    max-width: var(--container-max);
+    margin: 0 auto;
+  }
+  
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    text-decoration: none;
+    color: var(--color-text-primary);
+  }
+  
+  .logo-icon {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--color-accent-highlight);
+    text-shadow: 2px 2px 0 var(--color-shadow);
+  }
+  
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: 0.1em;
+  }
+  
+  .nav-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: var(--space-sm);
+  }
+  
+  .toggle-bar {
+    width: 24px;
+    height: 3px;
+    background: var(--color-text-primary);
+    transition: transform 0.2s;
+  }
+  
+  .nav-links {
+    display: flex;
+    list-style: none;
+    gap: var(--space-md);
+    margin: 0;
+    padding: 0;
+  }
+  
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    padding: var(--space-xs) var(--space-sm);
+    transition: all 0.15s ease;
+    letter-spacing: 0.05em;
+  }
+  
+  .nav-link:hover {
+    color: var(--color-accent-highlight);
+    text-decoration: none;
+  }
+  
+  .nav-icon {
+    color: var(--color-accent-muted);
+    font-size: 0.875rem;
+  }
+  
+  @media (max-width: 768px) {
+    .nav-toggle {
+      display: flex;
+    }
+    
+    .nav-links {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      flex-direction: column;
+      background: var(--color-bg-medium);
+      border-bottom: var(--border-pixel);
+      padding: var(--space-md);
+      gap: var(--space-sm);
+    }
+    
+    .nav-links.open {
+      display: flex;
+    }
+    
+    .nav-link {
+      padding: var(--space-sm);
+    }
+  }
+</style>
+
+<script>
+  const toggle = document.querySelector('.nav-toggle');
+  const links = document.querySelector('.nav-links');
+  
+  toggle?.addEventListener('click', () => {
+    links?.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', links?.classList.contains('open') ? 'true' : 'false');
+  });
+</script>

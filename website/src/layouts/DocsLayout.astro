@@ -1,0 +1,43 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import DocsSidebar from '@/components/DocsSidebar.astro';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="docs-layout">
+    <DocsSidebar />
+    <article class="docs-content container-narrow">
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .docs-layout {
+    display: flex;
+    min-height: calc(100vh - 200px);
+  }
+  
+  .docs-content {
+    flex: 1;
+    padding: var(--space-xl) var(--space-lg);
+    max-width: 900px;
+  }
+  
+  @media (max-width: 900px) {
+    .docs-layout {
+      flex-direction: column;
+    }
+    
+    .docs-content {
+      padding: var(--space-lg) var(--space-md);
+    }
+  }
+</style>

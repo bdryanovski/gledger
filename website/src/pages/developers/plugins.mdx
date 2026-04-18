@@ -1,0 +1,233 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Plugin System
+description: Extend DoubleBook with custom plugins
+---
+
+# Plugin System
+
+DoubleBook's plugin system lets you extend functionality by hooking into the transaction lifecycle. Create custom reports, auto-categorize imports, sync with external systems, and more.
+
+## Built-in Plugins
+
+| Plugin | Command | Description |
+|--------|---------|-------------|
+| `sql-export` | `doublebook plugin run sql-export` | Export journal to SQLite |
+| `recurring` | `doublebook plugin run recurring` | Track recurring payments |
+
+```bash
+# List installed plugins
+doublebook plugin list
+
+# Run a plugin
+doublebook plugin run sql-export --output ~/finance.db
+doublebook plugin run recurring status
+```
+
+## Plugin Interface
+
+Every plugin implements the `Plugin` interface:
+
+```go
+package plugin
+
+type Plugin interface {
+    // Identity
+    Name() string        // unique identifier
+    Version() string     // semantic version
+    Description() string // one-line description
+
+    // Lifecycle
+    Initialize(config map[string]interface{}) error
+    Shutdown() error
+
+    // Hooks
+    OnParse(transactions []*ast.Transaction) error
+    OnAdd(transaction *ast.Transaction) error
+    OnFilter(transactions []*ast.Transaction) []*ast.Transaction
+    OnReport(transactions []*ast.Transaction) string
+    OnImport(rows []ImportRow, importMapName string) error
+}
+```
+
+## Hook Reference
+
+| Hook | When Called | Use Cases |
+|------|-------------|-----------|
+| `OnParse` | After journal files load | Index data, validate entries, enrich transactions |
+| `OnAdd` | After new transaction written | Sync to external systems, notifications |
+| `OnFilter` | When filtering transactions | Add custom filtering rules |
+| `OnReport` | When generating reports | Append custom sections |
+| `OnImport` | After CSV rows parsed | Auto-categorize, tag, transform imports |
+
+### Lifecycle Flow
+
+```plaintext
+Initialize → OnParse → [OnAdd / OnFilter / OnReport / OnImport] → Shutdown
+```
+
+## Creating a Plugin
+
+### Step 1: Create Package
+
+Create your plugin in `plugin/extensions/`:
+
+```plaintext
+plugin/extensions/myplugin/myplugin.go
+```
+
+### Step 2: Implement Interface
+
+```go
+package myplugin
+
+import (
+    "fmt"
+    "strings"
+    AST "doublebook/ast"
+    Plugin "doublebook/plugin"
+)
+
+// TaxSummaryPlugin estimates tax on income accounts
+type TaxSummaryPlugin struct {
+    Plugin.DefaultPlugin  // provides no-op defaults
+    TaxRate float64
+}
+
+func (p *TaxSummaryPlugin) Name() string        { return "tax-summary" }
+func (p *TaxSummaryPlugin) Version() string     { return "1.0.0" }
+func (p *TaxSummaryPlugin) Description() string {
+    return "Calculates estimated tax on income"
+}
+
+// Initialize reads plugin-specific config
+func (p *TaxSummaryPlugin) Initialize(config map[string]interface{}) error {
+    if rate, ok := config["tax_rate"].(float64); ok {
+        p.TaxRate = rate
+    } else {
+        p.TaxRate = 0.20 // default 20%
+    }
+    return nil
+}
+
+// OnReport appends tax info to reports
+func (p *TaxSummaryPlugin) OnReport(transactions []*AST.Transaction) string {
+    var totalIncome float64
+    for _, txn := range transactions {
+        for _, posting := range txn.Postings {
+            if strings.HasPrefix(posting.Account, "income:") {
+                totalIncome += posting.Amount.Value
+            }
+        }
+    }
+    totalIncome = -totalIncome // income is negative in double-entry
+    estimatedTax := totalIncome * p.TaxRate
+
+    return fmt.Sprintf(
+        "Tax Summary\n  Total Income: $%.2f\n  Tax (%d%%): $%.2f\n",
+        totalIncome, int(p.TaxRate*100), estimatedTax,
+    )
+}
+```
+
+### Step 3: Register Plugin
+
+Edit `interpreter/interpreter.go`:
+
+```go
+import MyPlugin "doublebook/plugin/extensions/myplugin"
+
+// In NewInterpreter():
+i.plugins.Register(&MyPlugin.TaxSummaryPlugin{}, map[string]interface{}{
+    "tax_rate": 0.25,
+})
+```
+
+### Step 4: Add CLI Command (Optional)
+
+```go
+// In your plugin
+func (p *TaxSummaryPlugin) RunCommand(txns []*AST.Transaction, args []string) error {
+    report := p.OnReport(txns)
+    fmt.Print(report)
+    return nil
+}
+
+// In cli/commands/plugin_command.go
+case "tax-summary":
+    p := &myplugin.TaxSummaryPlugin{}
+    _ = p.Initialize(nil)
+    return p.RunCommand(txns, args)
+```
+
+Then run:
+
+```bash
+doublebook plugin run tax-summary
+```
+
+## DefaultPlugin Helper
+
+Embed `DefaultPlugin` to avoid implementing every hook:
+
+```go
+type DefaultPlugin struct{}
+
+func (d *DefaultPlugin) OnParse(_ []*ast.Transaction) error                  { return nil }
+func (d *DefaultPlugin) OnAdd(_ *ast.Transaction) error                      { return nil }
+func (d *DefaultPlugin) OnFilter(txns []*ast.Transaction) []*ast.Transaction { return txns }
+func (d *DefaultPlugin) OnReport(_ []*ast.Transaction) string                { return "" }
+func (d *DefaultPlugin) OnImport(_ []ImportRow, _ string) error              { return nil }
+func (d *DefaultPlugin) Shutdown() error                                     { return nil }
+func (d *DefaultPlugin) Initialize(_ map[string]interface{}) error           { return nil }
+```
+
+Override only the hooks you need.
+
+## Configuration
+
+Configure plugins in `~/.doublebook/config.yaml`:
+
+```yaml
+# Plugins to load on startup
+plugins:
+  - sql-export
+  - recurring
+  - tax-summary
+
+# Per-plugin configuration
+plugin_config:
+  sql-export:
+    output_path: ~/reports/finance.db
+  recurring:
+    config_path: ~/.doublebook/recurring.json
+  tax-summary:
+    tax_rate: 0.25
+```
+
+## Example Use Cases
+
+| Goal | Hooks | Notes |
+|------|-------|-------|
+| Auto-tag by description | `OnImport`, `OnAdd` | Match patterns, set tags |
+| Enforce account naming | `OnAdd` | Return error on violations |
+| Sync to external app | `OnAdd` | POST to API |
+| Custom PDF report | `OnReport` | Return formatted string |
+| Export to CSV | `OnParse` | Write on load |
+| Budget alerts | `OnReport` | Compare to limits |
+| Anomaly detection | `OnParse` | Flag large transactions |
+
+## Limitations
+
+- **No hot-reload**: Restart after plugin changes
+- **Same process**: Plugin crashes affect the app
+- **Built-in only**: External `.so` files not supported
+- **Compiled in**: Fork and add to `plugin/extensions/`
+
+## Best Practices
+
+1. **Wrap risky code** in `recover()` to prevent crashes
+2. **Use DefaultPlugin** for clean implementations
+3. **Document configuration** options clearly
+4. **Test thoroughly** before deploying
+5. **Keep state minimal** - journals can be reloaded

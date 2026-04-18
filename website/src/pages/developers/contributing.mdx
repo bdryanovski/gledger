@@ -1,0 +1,349 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Contributing
+description: How to contribute to DoubleBook development
+---
+
+# Contributing to DoubleBook
+
+Thank you for your interest in contributing to DoubleBook! This guide covers everything you need to know to get started.
+
+## Getting Started
+
+### Prerequisites
+
+- **Go 1.21** or later
+- **Node.js 18+** (for web UI development)
+- **Make** (for build commands)
+- **Git** for version control
+
+### Clone and Setup
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gledger.git
+cd gledger
+
+# Install Go dependencies
+go mod download
+
+# Install web UI dependencies (optional)
+make web-install
+
+# Build the project
+make build
+
+# Run tests to verify setup
+make test
+```
+
+## Development Workflow
+
+### Building
+
+```bash
+# Build CLI only (fast)
+make build
+
+# Build with web UI (requires Node.js)
+make build/full
+
+# Run without building
+go run . [command]
+```
+
+### Testing
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test/cover
+
+# Run specific package tests
+go test -v ./parser/...
+go test -v ./fql/...
+```
+
+### Code Quality
+
+```bash
+# Format code
+make tidy
+
+# Run all quality checks
+make audit
+# Includes: tests, go vet, staticcheck, vulnerability scan
+```
+
+### Web UI Development
+
+```bash
+# Start Vite dev server (hot reload)
+make dev-web
+
+# Build production bundle
+make web-build
+```
+
+## Code Style Guide
+
+### Go Code
+
+Follow standard Go conventions:
+
+```go
+// Package-level documentation
+// Package parser implements the journal file parser.
+package parser
+
+// Exported functions have doc comments
+// ParseFile reads and parses a journal file from the given path.
+// It returns the parsed transactions or an error if parsing fails.
+func ParseFile(path string) ([]*ast.Transaction, error) {
+    // Implementation
+}
+
+// Use meaningful names
+func (p *Parser) parsePosting() (*ast.Posting, error) {
+    // Not: func (p *Parser) pp() (*ast.Posting, error)
+}
+
+// Handle errors explicitly
+result, err := doSomething()
+if err != nil {
+    return fmt.Errorf("doing something: %w", err)
+}
+
+// Keep functions focused
+// If a function is > 50 lines, consider splitting
+```
+
+### Formatting
+
+```bash
+# Always run before committing
+go fmt ./...
+
+# Or use make
+make tidy
+```
+
+### Naming Conventions
+
+| Type | Convention | Example |
+|------|------------|---------|
+| Packages | lowercase, short | `parser`, `fql`, `ast` |
+| Files | lowercase, underscore | `transaction_test.go` |
+| Types | PascalCase | `Transaction`, `Posting` |
+| Functions | PascalCase (exported) | `ParseFile`, `LoadJournal` |
+| Functions | camelCase (private) | `parsePosting`, `nextToken` |
+| Variables | camelCase | `accountName`, `totalAmount` |
+| Constants | PascalCase or ALL_CAPS | `MaxLineLength`, `VERSION` |
+
+### Project Structure
+
+When adding new functionality:
+
+```plaintext
+# New package for major feature
+gledger/
+└── newfeature/
+    ├── newfeature.go      # Main implementation
+    ├── newfeature_test.go # Tests
+    └── helpers.go         # Internal helpers
+
+# Addition to existing package
+gledger/
+└── interpreter/
+    ├── interpreter.go
+    ├── balance.go
+    ├── register.go
+    └── your_feature.go    # Add here
+```
+
+## Making Changes
+
+### Branch Strategy
+
+```bash
+# Create feature branch from main
+git checkout main
+git pull origin main
+git checkout -b feature/your-feature-name
+
+# For bug fixes
+git checkout -b fix/issue-description
+```
+
+### Commit Messages
+
+Follow conventional commits:
+
+```bash
+# Format
+<type>: <description>
+
+# Types
+feat: add new feature
+fix: bug fix
+docs: documentation only
+style: formatting, no code change
+refactor: code restructuring
+test: adding tests
+chore: maintenance tasks
+
+# Examples
+feat: add recurring transaction plugin
+fix: handle negative amounts in balance command
+docs: update FQL query examples
+test: add parser edge case tests
+refactor: extract amount parsing to separate function
+```
+
+### Pull Request Process
+
+1. **Update your branch**
+   ```bash
+   git fetch origin
+   git rebase origin/main
+   ```
+
+2. **Run all checks**
+   ```bash
+   make audit
+   ```
+
+3. **Push and create PR**
+   ```bash
+   git push origin feature/your-feature-name
+   # Create PR on GitHub
+   ```
+
+4. **PR Description Template**
+   ```markdown
+   ## Summary
+   Brief description of changes
+
+   ## Changes
+   - Added X
+   - Fixed Y
+   - Updated Z
+
+   ## Testing
+   - [ ] Unit tests added/updated
+   - [ ] Manual testing completed
+   - [ ] make audit passes
+
+   ## Related Issues
+   Fixes #123
+   ```
+
+## Adding Features
+
+### New CLI Command
+
+1. Create command file in `cli/commands/`
+2. Register in `cli/cli.go`
+3. Add tests
+4. Update documentation
+
+```go
+// cli/commands/mycommand.go
+package commands
+
+import (
+    "github.com/spf13/cobra"
+)
+
+var MyCommand = &cobra.Command{
+    Use:   "mycommand",
+    Short: "Brief description",
+    Long:  `Detailed description of what this command does.`,
+    RunE: func(cmd *cobra.Command, args []string) error {
+        // Implementation
+        return nil
+    },
+}
+
+func init() {
+    MyCommand.Flags().StringP("option", "o", "", "Option description")
+}
+```
+
+### New Plugin
+
+See [Plugin System](/gledger/developers/plugins/) documentation.
+
+### New FQL Function
+
+1. Add to `fql/functions.go`
+2. Register in function map
+3. Add tests in `fql/functions_test.go`
+4. Document in FQL docs
+
+## Testing Guidelines
+
+### Unit Tests
+
+```go
+func TestParseTransaction(t *testing.T) {
+    input := `2025-01-15 Test Transaction
+    expenses:test    $100.00
+    assets:checking -$100.00`
+
+    result, err := Parse(input)
+
+    if err != nil {
+        t.Fatalf("unexpected error: %v", err)
+    }
+
+    if len(result.Postings) != 2 {
+        t.Errorf("expected 2 postings, got %d", len(result.Postings))
+    }
+}
+```
+
+### Table-Driven Tests
+
+```go
+func TestAmountParsing(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        want    float64
+        wantErr bool
+    }{
+        {"positive", "$100.00", 100.00, false},
+        {"negative", "-$50.00", -50.00, false},
+        {"invalid", "abc", 0, true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := ParseAmount(tt.input)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+            }
+            if got != tt.want {
+                t.Errorf("got %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+```
+
+## Getting Help
+
+- **Issues**: Report bugs or request features on GitHub
+- **Discussions**: Ask questions in GitHub Discussions
+- **Code Review**: Tag maintainers for review help
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the project's license.
+
+---
+
+Thank you for contributing to DoubleBook!

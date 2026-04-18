@@ -1,0 +1,255 @@
+---
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+---
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pixel-dot"></span>
+        Plain-Text Accounting
+      </div>
+      
+      <h1 class="hero-title">
+        <span class="title-prefix">$</span>
+        DoubleBook
+      </h1>
+      
+      <p class="hero-tagline">
+        Double-entry bookkeeping in the terminal.<br/>
+        Human-readable. Git-friendly. Powerful.
+      </p>
+      
+      <div class="hero-features">
+        <div class="feature-tag">hledger compatible</div>
+        <div class="feature-tag">SQL-like queries</div>
+        <div class="feature-tag">Plugin system</div>
+        <div class="feature-tag">Web & CLI</div>
+      </div>
+      
+      <div class="hero-actions">
+        <a href={`${base}docs/`} class="btn">
+          <span>[?]</span> Get Started
+        </a>
+        <a href="https://github.com/yourusername/gledger" class="btn btn-secondary" target="_blank" rel="noopener">
+          <span>[G]</span> View Source
+        </a>
+      </div>
+    </div>
+    
+    <div class="hero-terminal">
+      <div class="terminal-header">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">doublebook</span>
+      </div>
+      <div class="terminal-body">
+        <pre><code><span class="prompt">$</span> doublebook balance
+
+<span class="account">assets:checking</span>         <span class="positive">$3,250.00</span>
+<span class="account">assets:savings</span>          <span class="positive">$8,500.00</span>
+<span class="account">expenses:groceries</span>        <span class="expense">$324.50</span>
+<span class="account">expenses:utilities</span>        <span class="expense">$189.00</span>
+<span class="account">income:salary</span>          <span class="negative">-$5,000.00</span>
+<span class="separator">--------------------</span>
+<span class="total">Total</span>                   <span class="positive">$7,263.50</span>
+
+<span class="prompt">$</span> <span class="cursor">_</span></code></pre>
+      </div>
+    </div>
+  </div>
+  
+  <div class="hero-decoration">
+    <div class="pixel-grid"></div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding: var(--space-xl) 0;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, 
+      var(--color-bg-dark) 0%,
+      var(--color-bg-medium) 100%
+    );
+  }
+  
+  .hero .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xl);
+    align-items: center;
+  }
+  
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--color-accent-highlight);
+    padding: var(--space-xs) var(--space-sm);
+    border: 1px solid var(--color-accent-muted);
+    background: var(--color-bg-card);
+    margin-bottom: var(--space-md);
+  }
+  
+  .pixel-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--color-accent-primary);
+    animation: blink 1s infinite;
+  }
+  
+  @keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+  }
+  
+  .hero-title {
+    font-size: 4rem;
+    margin-bottom: var(--space-md);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-sm);
+  }
+  
+  .title-prefix {
+    color: var(--color-accent-highlight);
+    text-shadow: 3px 3px 0 var(--color-shadow);
+  }
+  
+  .hero-tagline {
+    font-size: 1.25rem;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-lg);
+    line-height: 1.6;
+  }
+  
+  .hero-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-lg);
+  }
+  
+  .feature-tag {
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--color-bg-light);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+  }
+  
+  .hero-actions {
+    display: flex;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+  }
+  
+  /* Terminal */
+  .hero-terminal {
+    background: var(--color-bg-dark);
+    border: var(--border-pixel);
+    box-shadow: 8px 8px 0 var(--color-shadow);
+  }
+  
+  .terminal-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-light);
+    border-bottom: var(--border-pixel);
+  }
+  
+  .terminal-dot {
+    width: 10px;
+    height: 10px;
+    background: var(--color-accent-muted);
+    border-radius: 0;
+  }
+  
+  .terminal-title {
+    margin-left: var(--space-sm);
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+  }
+  
+  .terminal-body {
+    padding: var(--space-md);
+  }
+  
+  .terminal-body pre {
+    margin: 0;
+    background: transparent !important;
+    border: none;
+    padding: 0;
+    font-size: 0.8rem;
+  }
+  
+  .terminal-body pre::before {
+    display: none;
+  }
+  
+  .terminal-body code {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+  
+  .prompt { color: var(--color-accent-highlight); }
+  .account { color: var(--color-text-secondary); }
+  .positive { color: var(--color-success); }
+  .negative { color: var(--color-accent-highlight); }
+  .expense { color: var(--color-warning); }
+  .separator { color: var(--color-border); }
+  .total { color: var(--color-text-primary); font-weight: 500; }
+  .cursor { 
+    animation: cursor-blink 0.8s infinite; 
+    color: var(--color-accent-highlight);
+  }
+  
+  @keyframes cursor-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+  
+  /* Decoration */
+  .hero-decoration {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-accent-muted) 0px,
+      var(--color-accent-muted) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+  
+  @media (max-width: 900px) {
+    .hero .container {
+      grid-template-columns: 1fr;
+    }
+    
+    .hero-title {
+      font-size: 3rem;
+    }
+    
+    .hero-terminal {
+      max-width: 100%;
+      overflow-x: auto;
+    }
+  }
+</style>

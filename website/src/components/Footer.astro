@@ -1,0 +1,160 @@
+---
+const currentYear = new Date().getFullYear();
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+---
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="footer-logo">$ DoubleBook</span>
+        <p class="footer-tagline">Plain-text accounting for everyone</p>
+      </div>
+      
+      <div class="footer-links">
+        <div class="footer-column">
+          <h4>Learn</h4>
+          <ul>
+            <li><a href={`${base}docs/`}>Getting Started</a></li>
+            <li><a href={`${base}docs/fql/`}>Query Language</a></li>
+            <li><a href={`${base}docs/examples/`}>Examples</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-column">
+          <h4>Develop</h4>
+          <ul>
+            <li><a href={`${base}developers/`}>Architecture</a></li>
+            <li><a href={`${base}developers/plugins/`}>Plugins</a></li>
+            <li><a href={`${base}developers/contributing/`}>Contributing</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-column">
+          <h4>Community</h4>
+          <ul>
+            <li><a href="https://github.com/yourusername/gledger" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/yourusername/gledger/issues" target="_blank" rel="noopener">Issues</a></li>
+            <li><a href="https://github.com/yourusername/gledger/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <div class="pixel-line"></div>
+      <p>
+        <span class="copyright">&copy; {currentYear} DoubleBook</span>
+        <span class="separator">|</span>
+        <span class="compat">Compatible with hledger format</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    background: var(--color-bg-medium);
+    border-top: var(--border-pixel);
+    padding: var(--space-xl) 0 var(--space-lg);
+    margin-top: var(--space-xl);
+  }
+  
+  .footer-content {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-xl);
+    flex-wrap: wrap;
+  }
+  
+  .footer-brand {
+    max-width: 300px;
+  }
+  
+  .footer-logo {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-accent-highlight);
+  }
+  
+  .footer-tagline {
+    color: var(--color-text-muted);
+    margin-top: var(--space-sm);
+    font-size: 0.9rem;
+  }
+  
+  .footer-links {
+    display: flex;
+    gap: var(--space-xl);
+    flex-wrap: wrap;
+  }
+  
+  .footer-column h4 {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+    letter-spacing: 0.05em;
+  }
+  
+  .footer-column ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .footer-column li {
+    margin-bottom: var(--space-xs);
+  }
+  
+  .footer-column a {
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    transition: color 0.15s;
+  }
+  
+  .footer-column a:hover {
+    color: var(--color-accent-highlight);
+    text-decoration: none;
+  }
+  
+  .footer-bottom {
+    margin-top: var(--space-lg);
+    text-align: center;
+  }
+  
+  .pixel-line {
+    height: 2px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      var(--color-border) 10%,
+      var(--color-border) 90%,
+      transparent 100%
+    );
+    margin-bottom: var(--space-md);
+  }
+  
+  .footer-bottom p {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+  }
+  
+  .separator {
+    margin: 0 var(--space-sm);
+    opacity: 0.5;
+  }
+  
+  @media (max-width: 768px) {
+    .footer-content {
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+    
+    .footer-links {
+      gap: var(--space-lg);
+    }
+  }
+</style>

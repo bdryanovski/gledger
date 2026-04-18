@@ -1,0 +1,219 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Budgeting
+description: How to track budgets with DoubleBook
+---
+
+# Budgeting with DoubleBook
+
+DoubleBook doesn't have built-in budget enforcement, but you can effectively track and monitor budgets using accounts, queries, and reports.
+
+## Budget Tracking Approaches
+
+### 1. Envelope Budgeting with Accounts
+
+Create budget "envelope" accounts:
+
+```plaintext
+; Budget allocations at start of month
+2025-01-01 Monthly Budget Allocation
+    assets:budget:groceries        $400.00
+    assets:budget:dining           $200.00
+    assets:budget:entertainment    $100.00
+    assets:checking               -$700.00
+
+; When spending, draw from envelope
+2025-01-05 Grocery Store
+    expenses:food:groceries         $78.50
+    assets:budget:groceries        -$78.50
+```
+
+Check remaining budget:
+
+```bash
+doublebook balance --account assets:budget
+```
+
+### 2. Virtual Budget Tracking
+
+Track budgets without moving money:
+
+```plaintext
+; Define monthly budgets (no actual money movement)
+2025-01-01 January Budgets ; type:budget
+    budget:groceries              $400.00
+    budget:dining                 $200.00
+    budget:entertainment          $100.00
+    budget:allocation            -$700.00
+```
+
+Compare with FQL:
+
+```sql
+SELECT 
+  'groceries' AS category,
+  (SELECT total_amount FROM accounts WHERE account = 'budget:groceries') AS budget,
+  (SELECT SUM(amount) FROM transactions WHERE account = 'expenses:food:groceries' AND date >= '2025-01-01') AS spent
+```
+
+## Monthly Budget Review
+
+### Check Spending vs Budget
+
+```bash
+# This month's expenses by category
+doublebook fql --query "
+SELECT account, SUM(amount) AS spent
+FROM transactions
+WHERE account LIKE 'expenses:%'
+  AND date >= '2025-01-01'
+  AND date <= '2025-01-31'
+GROUP BY account
+ORDER BY spent DESC
+"
+```
+
+### Spending Pace Check
+
+Are you on track mid-month?
+
+```sql
+-- Day of month spending rate
+SELECT 
+  account,
+  SUM(amount) AS spent_so_far,
+  SUM(amount) / 15 * 31 AS projected_monthly  -- if on day 15
+FROM transactions
+WHERE account LIKE 'expenses:%'
+  AND date >= '2025-01-01'
+GROUP BY account
+ORDER BY projected_monthly DESC
+```
+
+## Budget Categories
+
+Suggested expense categories for budgeting:
+
+```plaintext
+expenses:
+  housing:
+    rent
+    utilities:electric
+    utilities:gas
+    utilities:water
+    insurance
+    maintenance
+  food:
+    groceries
+    dining
+    coffee
+  transport:
+    gas
+    insurance
+    maintenance
+    parking
+    rideshare
+  health:
+    insurance
+    medical
+    pharmacy
+    fitness
+  personal:
+    clothing
+    grooming
+    subscriptions
+  entertainment:
+    streaming
+    events
+    hobbies
+  financial:
+    fees
+    interest
+```
+
+## Budget Reports
+
+### Monthly Summary Script
+
+Create a shell script for monthly reviews:
+
+```bash
+#!/bin/bash
+# budget-review.sh
+
+MONTH=${1:-$(date +%Y-%m)}
+BEGIN="${MONTH}-01"
+END=$(date -d "${MONTH}-01 +1 month -1 day" +%Y-%m-%d)
+
+echo "=== Budget Review: $MONTH ==="
+echo ""
+echo "INCOME:"
+doublebook --begin $BEGIN --end $END fql --query "
+SELECT account, SUM(-amount) AS total
+FROM transactions
+WHERE account LIKE 'income:%'
+GROUP BY account
+"
+
+echo ""
+echo "EXPENSES:"
+doublebook --begin $BEGIN --end $END fql --query "
+SELECT account, SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+GROUP BY account
+ORDER BY total DESC
+"
+
+echo ""
+echo "NET:"
+doublebook --begin $BEGIN --end $END is
+```
+
+### Export to Spreadsheet
+
+```bash
+# Export for spreadsheet analysis
+doublebook fql --query "
+SELECT 
+  date,
+  description,
+  account,
+  amount
+FROM transactions
+WHERE date >= '2025-01-01'
+ORDER BY date
+" > transactions.csv
+```
+
+## Tips for Successful Budgeting
+
+1. **Review weekly**: Don't wait until month-end
+2. **Use consistent categories**: Stick to your account structure
+3. **Track everything**: Small purchases add up
+4. **Adjust quarterly**: Budgets should evolve with your life
+5. **Automate imports**: Use CSV import for bank statements
+6. **Set alerts**: Create scripts that warn when categories exceed limits
+
+## Sample Budget Workflow
+
+```bash
+# 1. Start of month: Review last month
+doublebook --begin 2024-12-01 --end 2024-12-31 balance --account expenses
+
+# 2. Set this month's targets (in a notes file or spreadsheet)
+
+# 3. Weekly check-in
+doublebook --begin 2025-01-01 balance --account expenses --tree
+
+# 4. Mid-month projection
+doublebook fql --query "
+SELECT account, SUM(amount) * 2 AS projected
+FROM transactions  
+WHERE account LIKE 'expenses:%' AND date >= '2025-01-01'
+GROUP BY account
+"
+
+# 5. End of month review
+doublebook --begin 2025-01-01 --end 2025-01-31 is
+```

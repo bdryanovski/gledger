@@ -1,0 +1,327 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: REST API
+description: DoubleBook REST API reference
+---
+
+# REST API
+
+DoubleBook provides a REST API for programmatic access to your financial data.
+
+## Starting the Server
+
+```bash
+# Start on default port (5555)
+doublebook api
+
+# Custom port and host
+doublebook api --port 8080 --host 0.0.0.0
+```
+
+## Endpoints
+
+### Health Check
+
+```http
+GET /api/health
+```
+
+Response:
+```json
+{
+  "status": "ok",
+  "version": "0.1.0"
+}
+```
+
+### List Accounts
+
+```http
+GET /api/accounts
+```
+
+Response:
+```json
+{
+  "accounts": [
+    {
+      "name": "assets:checking",
+      "balance": 1234.56,
+      "currency": "USD",
+      "transaction_count": 42
+    }
+  ]
+}
+```
+
+### Get Account Balance
+
+```http
+GET /api/accounts/:name/balance
+```
+
+Example:
+```bash
+curl "http://localhost:5555/api/accounts/assets:checking/balance"
+```
+
+Response:
+```json
+{
+  "account": "assets:checking",
+  "balance": 1234.56,
+  "currency": "USD"
+}
+```
+
+### List Transactions
+
+```http
+GET /api/transactions
+```
+
+Query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `account` | Filter by account name |
+| `begin` | Start date (YYYY-MM-DD) |
+| `end` | End date (YYYY-MM-DD) |
+| `limit` | Max results (default: 100) |
+| `offset` | Skip results for pagination |
+
+Example:
+```bash
+curl "http://localhost:5555/api/transactions?account=expenses&limit=10"
+```
+
+Response:
+```json
+{
+  "transactions": [
+    {
+      "id": "tx-001",
+      "date": "2025-01-15",
+      "description": "Grocery Store",
+      "status": "*",
+      "postings": [
+        {"account": "expenses:groceries", "amount": 45.32, "currency": "USD"},
+        {"account": "assets:checking", "amount": -45.32, "currency": "USD"}
+      ]
+    }
+  ],
+  "total": 150,
+  "limit": 10,
+  "offset": 0
+}
+```
+
+### Add Transaction
+
+```http
+POST /api/transactions
+Content-Type: application/json
+```
+
+Request body:
+```json
+{
+  "date": "2025-01-15",
+  "description": "Coffee Shop",
+  "status": "*",
+  "postings": [
+    {"account": "expenses:dining", "amount": 4.50},
+    {"account": "assets:checking", "amount": -4.50}
+  ]
+}
+```
+
+Response:
+```json
+{
+  "id": "tx-002",
+  "success": true
+}
+```
+
+### Execute FQL Query
+
+```http
+POST /api/fql
+Content-Type: application/json
+```
+
+Request body:
+```json
+{
+  "query": "SELECT account, SUM(amount) AS total FROM transactions GROUP BY account"
+}
+```
+
+Response:
+```json
+{
+  "columns": ["account", "total"],
+  "rows": [
+    ["assets:checking", 1234.56],
+    ["expenses:groceries", 567.89]
+  ],
+  "row_count": 2
+}
+```
+
+### Get Balance Report
+
+```http
+GET /api/reports/balance
+```
+
+Query parameters:
+- `tree`: Show as tree structure (true/false)
+- `depth`: Limit account depth
+
+Response:
+```json
+{
+  "balances": [
+    {"account": "assets", "balance": 10000.00},
+    {"account": "assets:checking", "balance": 5000.00},
+    {"account": "assets:savings", "balance": 5000.00}
+  ]
+}
+```
+
+### Get Income Statement
+
+```http
+GET /api/reports/income-statement
+```
+
+Query parameters:
+- `begin`: Start date
+- `end`: End date
+
+Response:
+```json
+{
+  "period": {
+    "begin": "2025-01-01",
+    "end": "2025-01-31"
+  },
+  "income": 5000.00,
+  "expenses": 2500.00,
+  "net": 2500.00,
+  "details": {
+    "income": [
+      {"account": "income:salary", "amount": 5000.00}
+    ],
+    "expenses": [
+      {"account": "expenses:rent", "amount": 1500.00},
+      {"account": "expenses:groceries", "amount": 500.00}
+    ]
+  }
+}
+```
+
+## Error Handling
+
+Errors return appropriate HTTP status codes:
+
+```json
+{
+  "error": "Account not found",
+  "code": "NOT_FOUND",
+  "status": 404
+}
+```
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Bad request (invalid parameters) |
+| 404 | Resource not found |
+| 422 | Validation error (e.g., unbalanced transaction) |
+| 500 | Server error |
+
+## CORS
+
+CORS is enabled by default for local development. Configure for production:
+
+```bash
+doublebook api --cors-origins "https://myapp.com"
+```
+
+## Authentication
+
+No authentication is built-in. For production use:
+
+1. Run behind a reverse proxy (nginx, caddy)
+2. Add authentication at the proxy level
+3. Use HTTPS
+
+Example nginx configuration:
+
+```nginx
+location /api/ {
+    auth_basic "DoubleBook API";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    proxy_pass http://localhost:5555/api/;
+}
+```
+
+## Client Examples
+
+### curl
+
+```bash
+# Get balances
+curl http://localhost:5555/api/accounts
+
+# Add transaction
+curl -X POST http://localhost:5555/api/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"date":"2025-01-15","description":"Test","postings":[{"account":"expenses:test","amount":10},{"account":"assets:checking","amount":-10}]}'
+
+# Run FQL query
+curl -X POST http://localhost:5555/api/fql \
+  -H "Content-Type: application/json" \
+  -d '{"query":"SELECT * FROM transactions LIMIT 5"}'
+```
+
+### JavaScript
+
+```javascript
+// Fetch balances
+const response = await fetch('http://localhost:5555/api/accounts');
+const data = await response.json();
+
+// Add transaction
+await fetch('http://localhost:5555/api/transactions', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    date: '2025-01-15',
+    description: 'Coffee',
+    postings: [
+      { account: 'expenses:dining', amount: 4.50 },
+      { account: 'assets:checking', amount: -4.50 }
+    ]
+  })
+});
+```
+
+### Python
+
+```python
+import requests
+
+# Get balances
+response = requests.get('http://localhost:5555/api/accounts')
+accounts = response.json()
+
+# Run FQL query
+response = requests.post(
+    'http://localhost:5555/api/fql',
+    json={'query': 'SELECT * FROM transactions LIMIT 10'}
+)
+results = response.json()
+```

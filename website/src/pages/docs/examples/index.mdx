@@ -1,0 +1,300 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Examples & Common Workflows
+description: Practical examples and common accounting patterns with DoubleBook
+---
+
+# Examples & Common Workflows
+
+Real-world examples showing how to use DoubleBook effectively for personal and business accounting.
+
+## Personal Finance Setup
+
+### Account Structure
+
+A typical personal finance setup might use this account hierarchy:
+
+```plaintext
+; Assets - things you own
+assets:checking          ; Primary bank account
+assets:savings           ; Savings account
+assets:cash              ; Physical cash
+assets:investments       ; Brokerage account
+
+; Liabilities - things you owe
+liabilities:credit-card  ; Credit card balance
+liabilities:mortgage     ; Home loan
+
+; Income - money coming in
+income:salary            ; Regular paycheck
+income:freelance         ; Side income
+income:interest          ; Bank interest
+
+; Expenses - money going out
+expenses:housing:rent
+expenses:housing:utilities
+expenses:food:groceries
+expenses:food:dining
+expenses:transport:gas
+expenses:transport:maintenance
+expenses:entertainment
+expenses:healthcare
+```
+
+### Monthly Budget Workflow
+
+```plaintext
+; Beginning of month - Record expected income
+2025-01-01 Expected Salary
+    assets:checking          $3,500.00
+    income:salary           -$3,500.00
+
+; Track expenses as they happen
+2025-01-05 Whole Foods
+    expenses:food:groceries    $125.00
+    assets:checking           -$125.00
+
+2025-01-06 Netflix
+    expenses:entertainment      $15.99
+    assets:checking            -$15.99
+
+; End of month - Review with FQL
+; doublebook fql --query "
+;   SELECT account, SUM(amount) AS spent
+;   FROM transactions
+;   WHERE account LIKE 'expenses:%'
+;     AND date BETWEEN '2025-01-01' AND '2025-01-31'
+;   GROUP BY account
+;   ORDER BY spent DESC
+; "
+```
+
+## Credit Card Tracking
+
+### Recording Purchases
+
+```plaintext
+; When you make a purchase with credit card
+2025-01-10 Amazon Purchase
+    expenses:shopping          $49.99
+    liabilities:credit-card   -$49.99
+
+2025-01-12 Gas Station
+    expenses:transport:gas     $45.00
+    liabilities:credit-card   -$45.00
+```
+
+### Paying Off the Card
+
+```plaintext
+; When you pay your credit card bill
+2025-01-25 * Credit Card Payment
+    liabilities:credit-card   $500.00
+    assets:checking          -$500.00
+```
+
+### Check Your Balance
+
+```bash
+# See credit card balance (shows as negative = you owe)
+doublebook balance --account liabilities:credit-card
+```
+
+## Multi-Currency Transactions
+
+### Recording Foreign Currency
+
+```plaintext
+; Direct conversion
+2025-01-15 International Purchase
+    expenses:travel           €100.00 @ $1.08
+    assets:checking          -$108.00
+
+; Or with explicit amounts
+2025-01-16 Currency Exchange
+    assets:euros             €500.00
+    assets:checking         -$540.00
+```
+
+## Business Expenses
+
+### Tracking Business vs Personal
+
+```plaintext
+; Use tags for categorization
+2025-01-10 Office Supplies ; project:client-a
+    expenses:business:supplies   $85.00
+    assets:business:checking    -$85.00
+
+2025-01-10 Personal Lunch
+    expenses:food:dining         $15.00
+    assets:personal:checking    -$15.00
+```
+
+### Query Business Expenses
+
+```sql
+-- Get all business expenses
+SELECT date, description, amount
+FROM transactions
+WHERE account LIKE 'expenses:business:%'
+ORDER BY date DESC
+
+-- Total by category for tax purposes
+SELECT account, SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:business:%'
+GROUP BY account
+ORDER BY total DESC
+```
+
+## CSV Import Workflow
+
+### Bank Statement Import
+
+Create an import mapping file `bank-import.yaml`:
+
+```yaml
+# bank-import.yaml
+skip_lines: 1
+date_column: 0
+date_format: "01/02/2006"
+description_column: 2
+amount_column: 3
+
+# Automatic categorization rules
+rules:
+  - match: "AMAZON"
+    account: expenses:shopping
+  - match: "WHOLE FOODS"
+    account: expenses:food:groceries
+  - match: "SHELL|CHEVRON|GAS"
+    account: expenses:transport:gas
+  - match: "PAYROLL|SALARY"
+    account: income:salary
+    negate: true  # Income should be negative
+
+# Default for unmatched transactions
+default_expense: expenses:uncategorized
+default_income: income:other
+source_account: assets:checking
+```
+
+### Run the Import
+
+```bash
+# Preview what will be imported
+doublebook import --file bank-statement.csv --map bank-import.yaml --dry-run
+
+# Actually import
+doublebook import --file bank-statement.csv --map bank-import.yaml
+```
+
+## Recurring Transactions
+
+### Configure Recurring Payments
+
+Create `~/.doublebook/recurring.json`:
+
+```json
+{
+  "schedules": [
+    {
+      "id": "rent",
+      "description": "Monthly Rent",
+      "amount": 1500.00,
+      "debit_account": "expenses:housing:rent",
+      "credit_account": "assets:checking",
+      "frequency": "monthly",
+      "day_of_month": 1
+    },
+    {
+      "id": "netflix",
+      "description": "Netflix Subscription",
+      "amount": 15.99,
+      "debit_account": "expenses:entertainment",
+      "credit_account": "assets:checking",
+      "frequency": "monthly",
+      "day_of_month": 15
+    }
+  ]
+}
+```
+
+### Manage Recurring
+
+```bash
+# Check status of all recurring payments
+doublebook plugin run recurring status
+
+# List configured schedules
+doublebook plugin run recurring list
+
+# Generate upcoming transactions
+doublebook plugin run recurring generate
+```
+
+## Reporting Examples
+
+### Monthly Income Statement
+
+```bash
+doublebook fql --query "
+SELECT 
+  'Income' AS category,
+  SUM(-amount) AS total
+FROM transactions
+WHERE account LIKE 'income:%'
+  AND date BETWEEN '2025-01-01' AND '2025-01-31'
+
+UNION ALL
+
+SELECT 
+  'Expenses' AS category,
+  SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+  AND date BETWEEN '2025-01-01' AND '2025-01-31'
+"
+```
+
+### Net Worth Over Time
+
+```bash
+# Export to SQLite for complex analysis
+doublebook plugin run sql-export --output finance.db
+
+# Then use any SQL tool
+sqlite3 finance.db "
+SELECT 
+  month,
+  SUM(CASE WHEN type = 'asset' THEN balance ELSE 0 END) -
+  SUM(CASE WHEN type = 'liability' THEN balance ELSE 0 END) AS net_worth
+FROM monthly_balances
+GROUP BY month
+ORDER BY month
+"
+```
+
+### Spending Trends
+
+```sql
+-- Compare spending month over month
+SELECT 
+  month,
+  SUM(amount) AS total_spending
+FROM spending
+WHERE account LIKE 'expenses:%'
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+## Tips for Success
+
+1. **Be consistent with account names** - Use lowercase, colons for hierarchy
+2. **Add transactions daily** - Don't let them pile up
+3. **Use the `*` marker** for reconciled transactions
+4. **Keep comments** for unusual transactions
+5. **Back up with git** - Commit your journal regularly
+6. **Review weekly** - Use FQL to spot trends early

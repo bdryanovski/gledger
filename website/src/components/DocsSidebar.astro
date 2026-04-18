@@ -1,0 +1,145 @@
+---
+// Ensure base URL ends with a slash for proper path joining
+const base = import.meta.env.BASE_URL.endsWith('/') 
+  ? import.meta.env.BASE_URL 
+  : `${import.meta.env.BASE_URL}/`;
+
+const sections = [
+  {
+    title: 'Documentation',
+    links: [
+      { href: `${base}docs/`, label: 'Getting Started' },
+      { href: `${base}docs/installation/`, label: 'Installation' },
+      { href: `${base}docs/journal-format/`, label: 'Journal Format' },
+      { href: `${base}docs/cli-reference/`, label: 'CLI Reference' },
+    ]
+  },
+  {
+    title: 'Features',
+    links: [
+      { href: `${base}docs/fql/`, label: 'Query Language (FQL)' },
+      { href: `${base}docs/importing/`, label: 'CSV Import' },
+      { href: `${base}docs/web-ui/`, label: 'Web Interface' },
+      { href: `${base}docs/api/`, label: 'REST API' },
+    ]
+  },
+  {
+    title: 'Examples',
+    links: [
+      { href: `${base}docs/examples/`, label: 'Common Workflows' },
+      { href: `${base}docs/examples/budgeting/`, label: 'Budgeting' },
+      { href: `${base}docs/examples/reports/`, label: 'Reports & Analysis' },
+    ]
+  },
+  {
+    title: 'Developers',
+    links: [
+      { href: `${base}developers/`, label: 'Architecture' },
+      { href: `${base}developers/plugins/`, label: 'Plugin System' },
+      { href: `${base}developers/contributing/`, label: 'Contributing' },
+    ]
+  },
+];
+---
+
+<aside class="sidebar">
+  <nav class="sidebar-nav">
+    {sections.map(section => (
+      <div class="sidebar-section">
+        <h3 class="sidebar-title">{section.title}</h3>
+        <ul class="sidebar-links">
+          {section.links.map(link => (
+            <li>
+              <a href={link.href} class="sidebar-link">
+                <span class="link-marker">&gt;</span>
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </nav>
+</aside>
+
+<style>
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--color-bg-medium);
+    border-right: var(--border-pixel);
+    padding: var(--space-lg);
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+  
+  .sidebar-section {
+    margin-bottom: var(--space-lg);
+  }
+  
+  .sidebar-title {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--color-accent-highlight);
+    margin-bottom: var(--space-sm);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  
+  .sidebar-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-xs) 0;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    transition: all 0.15s;
+  }
+  
+  .sidebar-link:hover {
+    color: var(--color-text-primary);
+    text-decoration: none;
+  }
+  
+  .link-marker {
+    color: var(--color-accent-muted);
+    font-family: var(--font-display);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  
+  .sidebar-link:hover .link-marker {
+    opacity: 1;
+    color: var(--color-accent-highlight);
+  }
+  
+  @media (max-width: 900px) {
+    .sidebar {
+      width: 100%;
+      position: relative;
+      top: 0;
+      height: auto;
+      border-right: none;
+      border-bottom: var(--border-pixel);
+    }
+    
+    .sidebar-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+    }
+    
+    .sidebar-section {
+      flex: 1;
+      min-width: 200px;
+    }
+  }
+</style>

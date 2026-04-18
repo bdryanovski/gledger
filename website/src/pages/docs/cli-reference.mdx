@@ -1,0 +1,325 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: CLI Reference
+description: Complete command-line reference for DoubleBook
+---
+
+# CLI Reference
+
+Complete reference for all DoubleBook commands and options.
+
+## Global Flags
+
+These flags work with all commands:
+
+| Flag | Description |
+|------|-------------|
+| `--journal NAME` | Use journal stem NAME (default: "data") |
+| `--begin DATE` | Filter: only transactions on/after DATE |
+| `--end DATE` | Filter: only transactions on/before DATE |
+| `--verbose` | Enable verbose output |
+| `--help` | Show help message |
+
+```bash
+# Examples
+doublebook --journal personal balance
+doublebook --begin 2025-01-01 --end 2025-01-31 register
+doublebook --verbose balance
+```
+
+## Commands
+
+### balance, bal
+
+Show account balances.
+
+```bash
+doublebook balance [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--tree` | Display as hierarchical tree |
+| `--flat` | Display as flat list (default) |
+| `--account PATTERN` | Filter by account name |
+| `--depth N` | Limit account depth in output |
+
+```bash
+# Basic balance
+doublebook balance
+
+# Tree view
+doublebook balance --tree
+
+# Filter by account
+doublebook balance --account expenses
+
+# Limit depth
+doublebook balance --tree --depth 2
+```
+
+### register, reg, r
+
+Show transaction register with running totals.
+
+```bash
+doublebook register [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--account PATTERN` | Filter by account name |
+| `--limit N` | Limit number of results |
+| `--offset N` | Skip first N results |
+
+```bash
+# All transactions
+doublebook register
+
+# Filter by account
+doublebook register --account expenses:food
+
+# Paginate results
+doublebook register --limit 20 --offset 40
+```
+
+### list, ls
+
+Alias for register command.
+
+```bash
+doublebook list
+doublebook ls --account assets
+```
+
+### is, income-statement
+
+Show income statement (revenues vs expenses).
+
+```bash
+doublebook income-statement [flags]
+```
+
+```bash
+# Current period income statement
+doublebook is
+
+# Specific period
+doublebook --begin 2025-01-01 --end 2025-03-31 is
+```
+
+### add, insert
+
+Add a new transaction interactively or via flags.
+
+```bash
+doublebook add [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--date DATE` | Transaction date (YYYY-MM-DD) |
+| `--description TEXT` | Transaction description |
+| `--amount N` | Amount to transfer |
+| `--from ACCOUNT` | Source account |
+| `--to ACCOUNT` | Destination account |
+| `--cleared` | Mark as cleared (*) |
+
+```bash
+# Interactive mode
+doublebook add
+
+# With all flags
+doublebook add \
+  --date 2025-01-15 \
+  --description "Coffee Shop" \
+  --amount 4.50 \
+  --from assets:checking \
+  --to expenses:dining \
+  --cleared
+```
+
+### fql, query
+
+Financial Query Language - SQL-like queries.
+
+```bash
+doublebook fql [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--query "SQL"` | Run a single query |
+| (no flags) | Start interactive REPL |
+
+```bash
+# Interactive REPL
+doublebook fql
+
+# Single query
+doublebook fql --query "SELECT * FROM transactions LIMIT 10"
+
+# Complex query
+doublebook fql --query "
+  SELECT account, SUM(amount) AS total
+  FROM transactions
+  WHERE account LIKE 'expenses:%'
+  GROUP BY account
+  ORDER BY total DESC
+"
+```
+
+### import
+
+Import transactions from CSV files.
+
+```bash
+doublebook import [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--file PATH` | CSV file to import |
+| `--map PATH` | Import mapping YAML file |
+| `--dry-run` | Preview without writing |
+
+```bash
+# Preview import
+doublebook import --file statement.csv --map bank.yaml --dry-run
+
+# Actual import
+doublebook import --file statement.csv --map bank.yaml
+```
+
+### plugin
+
+Manage and run plugins.
+
+```bash
+doublebook plugin <subcommand> [flags]
+```
+
+#### Subcommands
+
+| Subcommand | Description |
+|------------|-------------|
+| `list` | List installed plugins |
+| `run NAME` | Run a plugin command |
+
+```bash
+# List plugins
+doublebook plugin list
+
+# Run plugin
+doublebook plugin run sql-export --output ~/finance.db
+doublebook plugin run recurring status
+doublebook plugin run recurring list
+doublebook plugin run recurring generate
+```
+
+### api
+
+Start REST API server.
+
+```bash
+doublebook api [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--port N` | Port to listen on (default: 5555) |
+| `--host ADDR` | Host address (default: localhost) |
+
+```bash
+# Start on default port
+doublebook api
+
+# Custom port
+doublebook api --port 8080
+
+# Listen on all interfaces
+doublebook api --host 0.0.0.0 --port 5555
+```
+
+### web
+
+Start web UI server.
+
+```bash
+doublebook web [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--port N` | Port to listen on (default: 8080) |
+
+```bash
+doublebook web
+doublebook web --port 3000
+```
+
+### help
+
+Show help message.
+
+```bash
+doublebook help
+doublebook help balance
+doublebook help fql
+```
+
+### version
+
+Show version information.
+
+```bash
+doublebook version
+```
+
+## Usage Examples
+
+### Daily Workflow
+
+```bash
+# Check current balances
+doublebook balance
+
+# Add today's transactions
+doublebook add
+
+# Review recent activity
+doublebook register --limit 10
+```
+
+### Monthly Review
+
+```bash
+# This month's transactions
+doublebook --begin 2025-01-01 --end 2025-01-31 register
+
+# Income statement
+doublebook --begin 2025-01-01 --end 2025-01-31 is
+
+# Expense breakdown
+doublebook fql --query "
+  SELECT account, SUM(amount) AS total
+  FROM transactions
+  WHERE account LIKE 'expenses:%'
+    AND date >= '2025-01-01'
+  GROUP BY account
+  ORDER BY total DESC
+"
+```
+
+### Data Management
+
+```bash
+# Import bank statement
+doublebook import --file ~/Downloads/statement.csv --map bank.yaml
+
+# Export to SQLite
+doublebook plugin run sql-export --output ~/finance.db
+
+# Check recurring payments
+doublebook plugin run recurring status
+```

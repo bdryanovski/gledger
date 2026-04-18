@@ -1,0 +1,164 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Installation
+description: How to install DoubleBook on your system
+---
+
+# Installation
+
+DoubleBook can be installed from source or using pre-built binaries.
+
+## From Source (Recommended)
+
+Building from source ensures you have the latest features and allows customization.
+
+### Prerequisites
+
+- **Go 1.21** or later
+- **Git**
+- **Make** (optional, for convenience commands)
+- **Node.js 18+** (only for web UI)
+
+### Build Steps
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/gledger.git
+cd gledger
+
+# Build CLI only (fast, no Node.js required)
+make build
+
+# Or build with web UI included
+make build/full
+
+# Install to your PATH (optional)
+sudo mv doublebook /usr/local/bin/
+```
+
+### Verify Installation
+
+```bash
+doublebook version
+# DoubleBook v0.1.0
+
+doublebook help
+# Shows available commands
+```
+
+## Build Options
+
+| Command | Description |
+|---------|-------------|
+| `make build` | CLI binary only, fastest build |
+| `make build/full` | CLI + embedded web UI |
+| `go build .` | Direct Go build |
+
+## Platform-Specific Notes
+
+### macOS
+
+```bash
+# Install Go via Homebrew
+brew install go
+
+# Build DoubleBook
+git clone https://github.com/yourusername/gledger.git
+cd gledger && make build
+
+# Add to PATH
+echo 'export PATH="$PATH:$HOME/gledger"' >> ~/.zshrc
+```
+
+### Linux
+
+```bash
+# Install Go (Ubuntu/Debian)
+sudo apt update
+sudo apt install golang-go
+
+# Or download from go.dev
+wget https://go.dev/dl/go1.21.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.0.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+
+# Build DoubleBook
+git clone https://github.com/yourusername/gledger.git
+cd gledger && make build
+sudo mv doublebook /usr/local/bin/
+```
+
+### Windows
+
+```powershell
+# Install Go from https://go.dev/dl/
+
+# Clone and build
+git clone https://github.com/yourusername/gledger.git
+cd gledger
+go build -o doublebook.exe .
+
+# Add to PATH via System Settings
+```
+
+## Configuration
+
+After installation, DoubleBook looks for configuration in `~/.doublebook/`:
+
+```bash
+# Create config directory
+mkdir -p ~/.doublebook
+
+# Create initial config
+cat > ~/.doublebook/config.yaml << EOF
+journal_name: data
+data_dir: ~/.doublebook
+default_currency: $
+EOF
+
+# Create your first journal
+touch ~/.doublebook/data.journal
+```
+
+## Updating
+
+```bash
+cd gledger
+git pull origin main
+make build
+```
+
+## Troubleshooting
+
+### "command not found"
+
+Ensure the binary is in your PATH:
+
+```bash
+# Check where it is
+which doublebook
+
+# Add to PATH if needed
+export PATH="$PATH:/path/to/gledger"
+```
+
+### Build Errors
+
+```bash
+# Update Go modules
+go mod tidy
+
+# Clean and rebuild
+go clean
+make build
+```
+
+### Web UI Not Working
+
+Ensure you built with `make build/full` and Node.js is installed:
+
+```bash
+node --version  # Should be 18+
+make web-install
+make build/full
+```

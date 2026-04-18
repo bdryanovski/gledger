@@ -1,0 +1,91 @@
+---
+const features = [
+  {
+    icon: '[TXT]',
+    title: 'Plain Text Files',
+    description: 'Your financial data lives in simple text files. Version control with git, edit with any editor, and own your data forever.'
+  },
+  {
+    icon: '[==]',
+    title: 'Double-Entry Accounting',
+    description: 'Every transaction balances. Debits equal credits. Catch errors automatically with the proven accounting method used for centuries.'
+  },
+  {
+    icon: '[SQL]',
+    title: 'Query Language (FQL)',
+    description: 'Analyze your finances with SQL-like queries. Group by month, filter by account, calculate totals, all from the command line.'
+  },
+  {
+    icon: '[>_]',
+    title: 'Multiple Interfaces',
+    description: 'Terminal UI for daily use, CLI for scripting, REST API for integrations, Web UI for visualization. Choose your workflow.'
+  },
+  {
+    icon: '[<>]',
+    title: 'Plugin System',
+    description: 'Extend functionality with plugins. Auto-categorize transactions, export to SQLite, track recurring payments, or build your own.'
+  },
+  {
+    icon: '[$?]',
+    title: 'Multi-Currency',
+    description: 'Track multiple currencies with automatic conversion. Perfect for international transactions and investment portfolios.'
+  }
+];
+---
+
+<section class="features section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-icon">[*]</span>
+      <h2>Features</h2>
+      <p class="section-subtitle">Everything you need for personal and business accounting</p>
+    </div>
+    
+    <div class="features-grid grid grid-3">
+      {features.map(feature => (
+        <div class="card">
+          <span class="feature-icon pixel-icon">{feature.icon}</span>
+          <h3 class="card-title">{feature.title}</h3>
+          <p>{feature.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .section-header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+  }
+  
+  .section-icon {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--color-accent-muted);
+    display: block;
+    margin-bottom: var(--space-sm);
+  }
+  
+  .section-header h2 {
+    margin-top: 0;
+    border: none;
+    padding: 0;
+  }
+  
+  .section-subtitle {
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+  }
+  
+  .feature-icon {
+    color: var(--color-accent-highlight);
+    margin-bottom: var(--space-md);
+    display: block;
+  }
+  
+  .features-grid .card p {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+  }
+</style>
