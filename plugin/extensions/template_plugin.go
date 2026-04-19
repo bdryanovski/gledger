@@ -3,7 +3,7 @@
 package extensions
 
 import (
-	"doublebook/ast"
+	"doublebook/core/ast"
 	"doublebook/plugin"
 )
 

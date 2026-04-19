@@ -6,8 +6,8 @@ import (
 	"flag"
 	"fmt"
 
-	"doublebook/ast"
-	"doublebook/db"
+	"doublebook/core/ast"
+	"doublebook/infra/db"
 	"doublebook/plugin"
 )
 

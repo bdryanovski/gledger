@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"doublebook/ast"
+	"doublebook/core/ast"
 	"doublebook/plugin"
-	"doublebook/utils"
+	"doublebook/infra/utils"
 )
 
 // ---------------------------------------------------------------------------

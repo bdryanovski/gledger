@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"doublebook/ast"
+	"doublebook/core/ast"
 )
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 package plugin
 
 import (
-	"doublebook/ast"
+	"doublebook/core/ast"
 )
 
 // ---------------------------------------------------------------------------

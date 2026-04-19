@@ -793,37 +793,78 @@ make dev-web
 
 ## Project Structure
 
+The codebase follows a domain-driven layout with clear separation of concerns:
+
 ```
 gledger/
-├── ast/            # Abstract Syntax Tree types
-├── lexer/          # Tokenizer for journal files
-├── parser/         # Parser for journal format
-├── interpreter/    # Core business logic engine
-├── journal/        # Journal file loading/writing
-├── cli/            # Command-line interface
-│   └── commands/   # CLI command implementations
-├── ui/             # Terminal UI (Bubbletea)
-├── fql/            # Financial Query Language
-├── db/             # SQLite cache/backend
-├── config/         # Configuration management
-├── currency/       # Currency conversion
-├── importer/       # Legacy CSV import (ImportMap JSON)
-├── rules/          # Rules engine for imports (YAML-based)
-│   ├── rule.go     # RuleSet, FieldMapping, CategoryRule types
-│   ├── engine.go   # Processes rows through mappings
-│   ├── transform.go # All 22 transform functions
-│   ├── loader.go   # YAML loading/saving
-│   ├── mapper.go   # Interactive TUI mapper
-│   └── preview.go  # File preview, auto-detection
-├── plugin/         # Plugin system
-├── api/            # REST API server
-├── web/            # Web server with embedded frontend
-├── web-ui/         # React frontend source
-├── utils/          # Shared utilities
-├── sample/         # Sample CSV and import mappings
-├── example/        # Example journal files
-└── docs/           # Documentation
+├── cmd/                    # Application entry points
+│   └── doublebook/         # Main CLI application
+│       └── main.go
+│
+├── core/                   # Core domain (minimal dependencies)
+│   ├── ast/                # Transaction, Posting, Amount types
+│   ├── lexer/              # Journal file tokenizer
+│   ├── parser/             # Journal format parser
+│   ├── journal/            # Journal file I/O
+│   └── currency/           # Currency handling & conversion
+│
+├── engine/                 # Business logic layer
+│   ├── interpreter/        # Query engine, balance calculations
+│   ├── fql/                # Financial Query Language
+│   └── dashboard/          # Dashboard query definitions
+│
+├── ingest/                 # Data import functionality
+│   ├── rules/              # Rules engine (YAML-based) - recommended
+│   │   ├── rule.go         # RuleSet, FieldMapping, CategoryRule
+│   │   ├── engine.go       # Row processing engine
+│   │   ├── transform.go    # 22 transform functions
+│   │   ├── loader.go       # YAML loading/saving
+│   │   ├── mapper.go       # Interactive TUI mapper
+│   │   └── preview.go      # File preview, auto-detection
+│   └── legacy/             # Legacy importer (ImportMap JSON)
+│
+├── interface/              # User-facing layers
+│   ├── cli/                # Command-line interface
+│   │   └── commands/       # CLI command implementations
+│   ├── tui/                # Terminal UI (Bubbletea)
+│   ├── api/                # REST API server
+│   │   └── handlers/       # HTTP handlers
+│   └── web/                # Web server with embedded frontend
+│
+├── infra/                  # Infrastructure & utilities
+│   ├── config/             # Configuration management
+│   ├── db/                 # SQLite cache/backend
+│   └── utils/              # Shared utilities
+│
+├── plugin/                 # Plugin system
+│   └── extensions/         # Built-in plugins
+│       ├── sqlexport/      # SQLite export plugin
+│       └── recurring/      # Recurring transactions plugin
+│
+├── web-ui/                 # React frontend (separate build)
+│   └── src/
+│
+├── examples/               # Example files
+│   ├── data/               # Sample journals and CSV files
+│   └── imports/            # Sample import mappings
+│
+└── docs/                   # Documentation
+    ├── site/               # Astro documentation website
+    ├── development/        # Development task history
+    ├── FQL.md              # FQL reference
+    └── PLUGINS.md          # Plugin development guide
 ```
+
+### Architecture Layers
+
+| Layer | Purpose | Dependencies |
+|-------|---------|--------------|
+| `core/` | Domain types & parsing | Minimal (stdlib only) |
+| `engine/` | Business logic | core/ |
+| `ingest/` | Data import | core/, infra/ |
+| `interface/` | User interfaces | engine/, ingest/, infra/ |
+| `infra/` | Infrastructure | core/ |
+| `plugin/` | Extensions | engine/, infra/ |
 
 ## License
 

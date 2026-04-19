@@ -1,5 +1,5 @@
 # Change these variables as necessary.
-main_package_path = ./
+main_package_path = ./cmd/doublebook
 binary_name = doublebook
 
 # ==================================================================================== #
@@ -125,19 +125,19 @@ production/deploy: confirm audit no-dirty
 ## docs-install: install documentation website dependencies
 .PHONY: docs-install
 docs-install:
-	cd website && npm install
+	cd docs/site && npm install
 
 ## docs-dev: run the documentation website dev server
 .PHONY: docs-dev
 docs-dev:
-	cd website && npm run dev
+	cd docs/site && npm run dev
 
 ## docs-build: build the documentation website
 .PHONY: docs-build
 docs-build: docs-install
-	cd website && npm run build
+	cd docs/site && npm run build
 
 ## docs-preview: preview the built documentation website
 .PHONY: docs-preview
 docs-preview:
-	cd website && npm run preview
+	cd docs/site && npm run preview
