@@ -47,6 +47,8 @@ func Run(args []string) error {
 		return commands.DashboardCommand(ctx, cmdArgs)
 	case "import":
 		return commands.ImportCommand(ctx, cmdArgs)
+	case "map", "mapper":
+		return commands.MapCommand(ctx, cmdArgs)
 	case "insert":
 		return commands.InsertCommand(ctx, cmdArgs)
 	case "add":
@@ -85,6 +87,7 @@ Commands:
   fql, query             Financial Query Language (REPL or --query "...")
   insert, add            Interactive form to add a new transaction
   import                 Import transactions from a CSV file
+  map, mapper            Interactive column mapper for CSV/Excel files
   reset                  Delete all journal data (with confirmation)
   help                   Show this help message
   version                Show version information

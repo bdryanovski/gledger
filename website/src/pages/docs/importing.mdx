@@ -1,197 +1,349 @@
 ---
 layout: '@/layouts/DocsLayout.astro'
-title: CSV Import
-description: Import bank statements and CSV files into DoubleBook
+title: CSV & Excel Import
+description: Import bank statements and financial data into DoubleBook
 ---
 
-# CSV Import
+# CSV & Excel Import
 
-DoubleBook can import transactions from CSV files, making it easy to bring in bank statements and other financial data.
+DoubleBook can import transactions from CSV and Excel files. The new **Rules Engine** provides a powerful, flexible way to map columns to transaction fields with transformations and auto-categorization.
 
-## Basic Usage
+## Quick Start: Interactive Mapper
+
+The easiest way to set up import rules is with the interactive mapper:
 
 ```bash
-# Preview what will be imported (dry run)
-doublebook import --file statement.csv --map bank.yaml --dry-run
+# Open interactive mapper for your file
+doublebook map statement.csv
 
-# Actually import transactions
-doublebook import --file statement.csv --map bank.yaml
+# Or for Excel files
+doublebook map statement.xlsx
 ```
 
-## Import Mapping File
+This launches a TUI where you can:
+1. See all columns with sample data
+2. Map columns to transaction fields
+3. Configure settings (source account, currency)
+4. Save as a reusable rules file
 
-Create a YAML file that describes your CSV format:
+## Importing with Rules
+
+Once you've created rules, importing is simple:
+
+```bash
+# Preview import (dry run)
+doublebook import --rules my-bank statement.csv --dry-run
+
+# Actually import
+doublebook import --rules my-bank statement.csv
+
+# Verbose output
+doublebook import --rules my-bank statement.csv --verbose
+```
+
+## Managing Rules
+
+```bash
+# List all saved rules
+doublebook map --list
+
+# Show details of a rule
+doublebook map --show my-bank
+
+# Rules are stored in ~/.doublebook/rules/
+```
+
+## Rules File Format
+
+Rules are YAML files that describe how to parse your file and map columns:
 
 ```yaml
-# bank-import.yaml
+# ~/.doublebook/rules/my-bank.rules.yaml
 
-# CSV parsing options
-skip_lines: 1           # Skip header row
-date_column: 0          # Column index for date
-date_format: "01/02/2006"  # Go date format
-description_column: 2   # Column index for description
-amount_column: 3        # Column index for amount
+name: my-bank
+description: My Bank checking account export
+version: "1"
 
-# Account mapping
-source_account: assets:checking
+# File format settings
+format:
+  type: csv
+  delimiter: ","
+  encoding: utf-8
+  skip_lines: 1  # Skip header row
 
-# Default accounts for unmatched transactions
-default_expense: expenses:uncategorized
-default_income: income:other
+# Account settings
+source_account: assets:checking:mybank
+default_debit_account: expenses:unknown
+default_credit_account: income:unknown
+currency: USD
 
-# Categorization rules (checked in order)
-rules:
-  - match: "AMAZON|AMZN"
-    account: expenses:shopping
-    
-  - match: "WHOLE FOODS|TRADER JOE"
-    account: expenses:food:groceries
-    
-  - match: "SHELL|CHEVRON|EXXON"
-    account: expenses:transport:gas
-    
-  - match: "NETFLIX|SPOTIFY|HULU"
-    account: expenses:entertainment:streaming
-    
-  - match: "PAYROLL|DIRECT DEP|SALARY"
-    account: income:salary
-    negate: true  # Flip sign for income
+# Column mappings
+mappings:
+  - field: date
+    direct:
+      column: 0
+
+  - field: description
+    direct:
+      column: 2
+
+  - field: amount
+    direct:
+      column: 3
+
+# Auto-categorization rules
+categories:
+  - name: groceries
+    match:
+      description_contains: ["grocery", "whole foods", "trader joe"]
+    set_account: expenses:food:groceries
+    set_category: groceries
+
+  - name: coffee
+    match:
+      description_contains: ["starbucks", "coffee"]
+    set_account: expenses:food:coffee
+```
+
+## Mapping Types
+
+### Direct Mapping
+
+Map a column directly to a field:
+
+```yaml
+mappings:
+  - field: date
+    direct:
+      column: 0  # Column index (0-based)
+```
+
+### Combine Mapping
+
+Combine multiple columns:
+
+```yaml
+mappings:
+  - field: description
+    combine:
+      columns: [1, 2, 3]
+      separator: " - "
+      trim: true
+
+  # Or use a format string
+  - field: description
+    combine:
+      columns: [1, 2]
+      format: "{0}: {1}"
+```
+
+### Transform Mapping
+
+Apply a transformation function:
+
+```yaml
+mappings:
+  - field: description
+    transform:
+      column: 2
+      function: uppercase
+
+  - field: amount
+    transform:
+      column: 3
+      function: parse_number
+      args:
+        decimal: ","
+        thousands: "."
+```
+
+### Lookup Mapping
+
+Map values using a lookup table:
+
+```yaml
+mappings:
+  - field: debit_account
+    lookup:
+      column: 4  # Category column
+      table:
+        FOOD: expenses:food
+        TRANSPORT: expenses:transport
+        SHOPPING: expenses:shopping
+      default: expenses:unknown
+```
+
+### Constant Mapping
+
+Set a fixed value:
+
+```yaml
+mappings:
+  - field: "tag:source"
+    constant:
+      value: "bank-import"
+```
+
+### Conditional Mapping
+
+Choose mapping based on conditions:
+
+```yaml
+mappings:
+  - field: debit_account
+    condition:
+      conditions:
+        - when:
+            column: 2
+            contains: "amazon"
+          mapping:
+            constant:
+              value: expenses:shopping
+        - when:
+            column: 3
+            greater_than: 100
+          mapping:
+            constant:
+              value: expenses:large
+      default:
+        constant:
+          value: expenses:unknown
+```
+
+## Transform Functions
+
+Available transformation functions:
+
+| Function | Description | Arguments |
+|----------|-------------|-----------|
+| `uppercase` | Convert to uppercase | - |
+| `lowercase` | Convert to lowercase | - |
+| `titlecase` | Convert to title case | - |
+| `trim` | Remove whitespace | `chars` |
+| `replace` | Replace text | `old`, `new` |
+| `regex_extract` | Extract with regex | `pattern`, `default` |
+| `prefix` | Add prefix | `prefix` |
+| `suffix` | Add suffix | `suffix` |
+| `truncate` | Truncate length | `length`, `ellipsis` |
+| `clean` | Remove non-printable | - |
+| `concat` | Join values | - |
+| `join` | Join with separator | `separator` |
+| `format` | Format string | `template` |
+| `parse_date` | Parse date | `input_format`, `output_format` |
+| `format_date` | Format date | `format` |
+| `parse_number` | Parse number | `decimal`, `thousands` |
+| `abs` | Absolute value | - |
+| `negate` | Negate number | - |
+| `default` | Default if empty | `value` |
+| `coalesce` | First non-empty | `default` |
+| `if_empty` | Conditional on empty | `then`, `else` |
+| `if_contains` | Conditional on contains | `search`, `then`, `else` |
+| `map` | Map values | key=value pairs |
+| `extract_account` | Extract account from description | pattern=account pairs |
+
+## Category Rules
+
+Auto-categorize transactions after parsing:
+
+```yaml
+categories:
+  # Match by description
+  - name: groceries
+    match:
+      description_contains: ["grocery", "supermarket"]
+    set_account: expenses:food:groceries
+    set_category: groceries
+    set_tags:
+      type: essential
+
+  # Match by amount range
+  - name: large-expense
+    match:
+      amount_min: 500
+      is_debit: true
+    set_tags:
+      review: required
+
+  # Match with regex
+  - name: utilities
+    match:
+      description_regex: "(electric|water|gas)\\s*bill"
+    set_account: expenses:utilities
 ```
 
 ## Date Formats
 
-Use Go's reference date format (`Mon Jan 2 15:04:05 MST 2006`):
+Common date format patterns:
 
 | Format | Example | Pattern |
 |--------|---------|---------|
-| MM/DD/YYYY | 01/15/2025 | `01/02/2006` |
-| DD/MM/YYYY | 15/01/2025 | `02/01/2006` |
-| YYYY-MM-DD | 2025-01-15 | `2006-01-02` |
-| DD-Mon-YYYY | 15-Jan-2025 | `02-Jan-2006` |
+| ISO | 2025-01-15 | `2006-01-02` |
+| US | 01/15/2025 | `01/02/2006` |
+| EU | 15/01/2025 | `02/01/2006` |
+| EU dot | 15.01.2025 | `02.01.2006` |
+| Month name | Jan 15, 2025 | `Jan 2, 2006` |
 
-## Rule Matching
+## Example: Multi-Column Description
 
-Rules use regular expressions to match transaction descriptions:
-
-```yaml
-rules:
-  # Simple text match
-  - match: "AMAZON"
-    account: expenses:shopping
-    
-  # Multiple patterns with OR
-  - match: "UBER|LYFT|TAXI"
-    account: expenses:transport:rideshare
-    
-  # Case insensitive by default
-  - match: "starbucks|Starbucks|STARBUCKS"
-    account: expenses:food:coffee
-    
-  # Partial match
-  - match: "INTEREST"
-    account: income:interest
-    negate: true
-```
-
-## Rule Options
-
-| Option | Description |
-|--------|-------------|
-| `match` | Regex pattern to match description |
-| `account` | Target account for matching transactions |
-| `negate` | Flip the sign of the amount (for income) |
-| `tags` | Add tags to matching transactions |
-| `description` | Override the transaction description |
-
-## Advanced Mapping
-
-### Multiple Amount Columns
-
-Some banks use separate debit/credit columns:
+Many bank exports have transaction type and details in separate columns:
 
 ```yaml
-debit_column: 3
-credit_column: 4
-# Or use a single column with negative values
-amount_column: 3
+mappings:
+  - field: description
+    combine:
+      columns: [1, 2, 3]  # Type, Merchant, Details
+      format: "{0} - {1} ({2})"
+      trim: true
 ```
 
-### Currency Column
+Input: `"POS"`, `"STARBUCKS"`, `"COFFEE PURCHASE"`  
+Output: `"POS - STARBUCKS (COFFEE PURCHASE)"`
+
+## Example: Split Debit/Credit Columns
+
+When your bank uses separate columns for debits and credits:
 
 ```yaml
-currency_column: 5
-default_currency: USD
+mappings:
+  - field: debit_amount
+    direct:
+      column: 3  # Withdrawals column
+
+  - field: credit_amount
+    direct:
+      column: 4  # Deposits column
 ```
 
-### Custom Field Mapping
+## Example: European Number Format
+
+For numbers like `1.234,56` (dot thousands, comma decimal):
 
 ```yaml
-# Extra columns to capture as tags
-tag_columns:
-  - column: 6
-    tag_name: reference
-  - column: 7
-    tag_name: category
+mappings:
+  - field: amount
+    transform:
+      column: 3
+      function: parse_number
+      args:
+        decimal: ","
+        thousands: "."
 ```
 
-## Example Workflow
+## Legacy Import (importmap.json)
 
-### 1. Download Statement
-
-Export your bank statement as CSV.
-
-### 2. Examine the Format
+The original JSON-based import system is still supported:
 
 ```bash
-head -5 statement.csv
-# Date,Type,Description,Amount,Balance
-# 01/15/2025,DEBIT,AMAZON PURCHASE,-$45.99,$1234.56
-# ...
+doublebook import --map bank.importmap.json statement.csv
 ```
 
-### 3. Create Mapping File
-
-```yaml
-# my-bank.yaml
-skip_lines: 1
-date_column: 0
-date_format: "01/02/2006"
-description_column: 2
-amount_column: 3
-source_account: assets:checking
-default_expense: expenses:uncategorized
-
-rules:
-  - match: "AMAZON"
-    account: expenses:shopping
-```
-
-### 4. Test Import
-
-```bash
-doublebook import --file statement.csv --map my-bank.yaml --dry-run
-```
-
-### 5. Review and Import
-
-```bash
-doublebook import --file statement.csv --map my-bank.yaml
-```
-
-### 6. Review Uncategorized
-
-```bash
-doublebook fql --query "
-  SELECT date, description, amount 
-  FROM transactions 
-  WHERE account = 'expenses:uncategorized'
-"
-```
+See the [legacy import documentation](/docs/legacy-import) for details.
 
 ## Tips
 
-1. **Start with dry-run**: Always preview before importing
-2. **Build rules incrementally**: Add rules as you encounter new merchants
-3. **Use specific patterns**: More specific matches prevent false positives
-4. **Keep mapping files**: Reuse them for future imports from the same bank
-5. **Review uncategorized**: Periodically check and add new rules
+1. **Use the interactive mapper first** - Let it auto-detect formats and suggest mappings
+2. **Start simple** - Add transformations only when needed
+3. **Test with --dry-run** - Preview before committing
+4. **Build categories gradually** - Add rules as you see uncategorized transactions
+5. **Keep rules in version control** - They're plain YAML files
+6. **Use descriptive names** - Name rules after the bank/source

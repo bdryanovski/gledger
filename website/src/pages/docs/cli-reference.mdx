@@ -169,26 +169,54 @@ doublebook fql --query "
 "
 ```
 
-### import
+### map, mapper
 
-Import transactions from CSV files.
+Interactive column mapper for creating import rules.
 
 ```bash
-doublebook import [flags]
+doublebook map [flags] <file>
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--file PATH` | CSV file to import |
-| `--map PATH` | Import mapping YAML file |
-| `--dry-run` | Preview without writing |
+| `--output PATH` | Custom output path for rules file |
+| `--list` | List existing rules |
+| `--show NAME` | Show details of a rule |
 
 ```bash
-# Preview import
-doublebook import --file statement.csv --map bank.yaml --dry-run
+# Interactive mapping
+doublebook map statement.csv
+doublebook map statement.xlsx
 
-# Actual import
-doublebook import --file statement.csv --map bank.yaml
+# List existing rules
+doublebook map --list
+
+# Show rule details
+doublebook map --show my-bank
+```
+
+### import
+
+Import transactions from CSV/Excel files.
+
+```bash
+doublebook import [flags] <file>
+```
+
+| Flag | Description |
+|------|-------------|
+| `--rules NAME` | Rules file name or path (recommended) |
+| `--map PATH` | Legacy importmap.json file |
+| `--dry-run` | Preview without writing |
+| `--verbose` | Show each imported transaction |
+
+```bash
+# Import with rules (recommended)
+doublebook import --rules my-bank statement.csv --dry-run
+doublebook import --rules my-bank statement.csv
+
+# Legacy import
+doublebook import --map bank.importmap.json statement.csv
 ```
 
 ### plugin
