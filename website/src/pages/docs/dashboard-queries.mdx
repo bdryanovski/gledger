@@ -1,0 +1,267 @@
+---
+layout: '@/layouts/DocsLayout.astro'
+title: Dashboard Queries
+description: FQL queries to build your own financial dashboards
+---
+
+# Dashboard Queries
+
+These FQL queries power the built-in dashboard. You can run them directly with `doublebook fql` to customize your analysis or integrate them into your own tools.
+
+## Summary Metrics
+
+### Total Income & Expenses by Month
+
+```sql
+SELECT 
+    month,
+    SUM(CASE WHEN account LIKE 'income:%' THEN -total_amount ELSE 0 END) AS income,
+    SUM(CASE WHEN account LIKE 'expenses:%' THEN total_amount ELSE 0 END) AS expenses
+FROM spending
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+This query returns monthly income and expenses side by side. Income is negated because it's stored as negative values in double-entry accounting.
+
+### Net Income (Savings) by Month
+
+```sql
+SELECT 
+    month,
+    SUM(CASE WHEN account LIKE 'income:%' THEN -total_amount ELSE 0 END) -
+    SUM(CASE WHEN account LIKE 'expenses:%' THEN total_amount ELSE 0 END) AS net_income
+FROM spending
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+### Savings Rate
+
+```sql
+SELECT 
+    month,
+    ROUND(
+        (SUM(CASE WHEN account LIKE 'income:%' THEN -total_amount ELSE 0 END) -
+         SUM(CASE WHEN account LIKE 'expenses:%' THEN total_amount ELSE 0 END)) /
+        SUM(CASE WHEN account LIKE 'income:%' THEN -total_amount ELSE 1 END) * 100,
+        1
+    ) AS savings_rate_pct
+FROM spending
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+## Spending Analysis
+
+### Top Expense Categories
+
+```sql
+SELECT account, SUM(amount) AS total
+FROM transactions
+WHERE account LIKE 'expenses:%'
+GROUP BY account
+ORDER BY total DESC
+LIMIT 10
+```
+
+### Monthly Expenses by Category
+
+```sql
+SELECT month, account, SUM(total_amount) AS expenses
+FROM spending
+WHERE account LIKE 'expenses:%'
+GROUP BY month, account
+ORDER BY month DESC, expenses DESC
+```
+
+### Spending Trend (for Sparkline)
+
+```sql
+SELECT month, SUM(total_amount) AS spending
+FROM spending
+WHERE account LIKE 'expenses:%'
+GROUP BY month
+ORDER BY month
+```
+
+## Income Analysis
+
+### Monthly Income
+
+```sql
+SELECT month, SUM(-total_amount) AS income
+FROM spending
+WHERE account LIKE 'income:%'
+GROUP BY month
+ORDER BY month DESC
+LIMIT 12
+```
+
+### Income by Source
+
+```sql
+SELECT account, SUM(-amount) AS total
+FROM transactions
+WHERE account LIKE 'income:%'
+GROUP BY account
+ORDER BY total DESC
+```
+
+## Account Balances
+
+### Current Balances
+
+```sql
+SELECT account, total_amount AS balance
+FROM accounts
+ORDER BY total_amount DESC
+```
+
+### Asset Accounts Only
+
+```sql
+SELECT account, total_amount AS balance
+FROM accounts
+WHERE type = 'asset'
+ORDER BY total_amount DESC
+```
+
+### Net Worth
+
+```sql
+SELECT 
+    SUM(CASE WHEN type = 'asset' THEN total_amount ELSE 0 END) -
+    SUM(CASE WHEN type = 'liability' THEN -total_amount ELSE 0 END) AS net_worth
+FROM accounts
+```
+
+## Recent Activity
+
+### Recent Transactions
+
+```sql
+SELECT date, description, account, amount
+FROM transactions
+ORDER BY date DESC
+LIMIT 20
+```
+
+### Large Transactions
+
+```sql
+SELECT date, description, account, amount
+FROM transactions
+WHERE amount > 500 OR amount < -500
+ORDER BY date DESC
+LIMIT 20
+```
+
+## Time-Based Analysis
+
+### Year-over-Year Comparison
+
+```sql
+SELECT 
+    year,
+    SUM(CASE WHEN account LIKE 'income:%' THEN -total_amount ELSE 0 END) AS income,
+    SUM(CASE WHEN account LIKE 'expenses:%' THEN total_amount ELSE 0 END) AS expenses
+FROM spending
+GROUP BY year
+ORDER BY year
+```
+
+### This Month vs Last Month
+
+```sql
+-- Current month
+SELECT 'This Month' AS period, SUM(total_amount) AS expenses
+FROM spending
+WHERE account LIKE 'expenses:%' AND month = strftime('%Y-%m', 'now')
+
+UNION ALL
+
+-- Last month
+SELECT 'Last Month' AS period, SUM(total_amount) AS expenses
+FROM spending
+WHERE account LIKE 'expenses:%' AND month = strftime('%Y-%m', date('now', '-1 month'))
+```
+
+## Using These Queries
+
+### Command Line
+
+```bash
+# Run any query directly
+doublebook fql --query "SELECT month, SUM(total_amount) FROM spending WHERE account LIKE 'expenses:%' GROUP BY month"
+
+# Interactive REPL for exploration
+doublebook fql
+```
+
+### Via API
+
+```bash
+curl -X POST http://localhost:5555/api/fql \
+  -H "Content-Type: application/json" \
+  -d '{"query": "SELECT account, SUM(amount) FROM transactions WHERE account LIKE '\''expenses:%'\'' GROUP BY account ORDER BY SUM(amount) DESC LIMIT 5"}'
+```
+
+### In Scripts
+
+```bash
+#!/bin/bash
+# monthly-report.sh
+
+echo "=== Monthly Financial Report ==="
+echo ""
+
+echo "Income:"
+doublebook fql --query "SELECT month, SUM(-total_amount) AS income FROM spending WHERE account LIKE 'income:%' GROUP BY month ORDER BY month DESC LIMIT 3"
+
+echo ""
+echo "Top Expenses:"
+doublebook fql --query "SELECT account, SUM(amount) AS total FROM transactions WHERE account LIKE 'expenses:%' GROUP BY account ORDER BY total DESC LIMIT 5"
+```
+
+## Interactive Dashboard
+
+The TUI includes an interactive dashboard with these visualizations. Launch it with:
+
+```bash
+# Start TUI and press 'd' for dashboard
+doublebook
+
+# Or use CLI dashboard
+doublebook dashboard
+doublebook dashboard --months 12
+```
+
+### Dashboard Controls
+
+| Key | Action |
+|-----|--------|
+| `d` | Open dashboard (from transaction list) |
+| `←` / `→` | Decrease / increase time period |
+| `1` | Show 1 month |
+| `3` | Show 3 months |
+| `6` | Show 6 months |
+| `y` | Show 1 year (12 months) |
+| `c` | Enter custom date range mode |
+| `tab` | Switch between date fields (in custom mode) |
+| `enter` | Apply custom date range |
+| `esc` | Cancel custom mode / return to list |
+
+### Custom Date Range
+
+Press `c` to enter custom date mode, then:
+
+1. Enter a start date in `YYYY-MM-DD` format
+2. Press `tab` to switch to the end date field
+3. Enter an end date
+4. Press `enter` to apply the custom range
+
+This lets you analyze any time period — a fiscal quarter, a specific year, or compare holiday seasons across years.

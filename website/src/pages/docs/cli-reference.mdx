@@ -258,6 +258,35 @@ doublebook web
 doublebook web --port 3000
 ```
 
+### reset
+
+Delete all journal data. Useful for testing or starting fresh.
+
+```bash
+doublebook reset [flags]
+```
+
+| Flag | Description |
+|------|-------------|
+| `--force` | Skip confirmation prompt |
+| `--dry-run` | Show what would be deleted without deleting |
+
+```bash
+# Preview what will be deleted
+doublebook reset --dry-run
+
+# Interactive reset (asks for confirmation)
+doublebook reset
+
+# Force reset without confirmation (for scripts)
+doublebook reset --force
+
+# Reset a specific journal
+doublebook --journal test reset --force
+```
+
+**Warning:** This permanently deletes all journal files. The `--dry-run` flag lets you preview what will be deleted before committing.
+
 ### help
 
 Show help message.
@@ -322,4 +351,8 @@ doublebook plugin run sql-export --output ~/finance.db
 
 # Check recurring payments
 doublebook plugin run recurring status
+
+# Reset all data (start fresh)
+doublebook reset --dry-run   # preview first
+doublebook reset             # requires typing 'yes'
 ```

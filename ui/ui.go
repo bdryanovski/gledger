@@ -14,6 +14,7 @@ import (
 
 	"doublebook/ast"
 	"doublebook/config"
+	"doublebook/dashboard"
 	"doublebook/interpreter"
 	"doublebook/utils"
 
@@ -33,6 +34,7 @@ const (
 	VIEW_LIST ViewMode = iota
 	VIEW_ADD
 	VIEW_REPORT
+	VIEW_DASHBOARD
 	VIEW_HELP
 )
 
@@ -100,6 +102,16 @@ type Model struct {
 	// Add-transaction form (ADD view)
 	formInputs []textinput.Model
 	formFocus  int
+
+	// Dashboard view state
+	dashData        *dashboard.DashboardData
+	dashMonths      int    // Number of months to show (0 = custom range)
+	dashBeginDate   string
+	dashEndDate     string
+	dashFocus       int                 // 0=presets, 1=begin date, 2=end date
+	dashBeginInput  textinput.Model
+	dashEndInput    textinput.Model
+	dashCustomMode  bool                // true when editing custom dates
 
 	// Status message shown in the header area
 	message    string
@@ -178,14 +190,29 @@ func InitialModel() (Model, error) {
 	inputs[0].Focus()
 	inputs[0].SetValue(time.Now().Format("2006-01-02"))
 
+	// Dashboard date inputs
+	beginInput := textinput.New()
+	beginInput.Placeholder = "YYYY-MM-DD"
+	beginInput.Prompt = "From: "
+	beginInput.CharLimit = 10
+	beginInput.Width = 12
+
+	endInput := textinput.New()
+	endInput.Placeholder = "YYYY-MM-DD"
+	endInput.Prompt = "To: "
+	endInput.CharLimit = 10
+	endInput.Width = 12
+
 	m := Model{
-		interpreter: interp,
-		config:      cfg,
-		currentView: VIEW_LIST,
-		width:       80,
-		height:      24,
-		table:       t,
-		formInputs:  inputs,
+		interpreter:    interp,
+		config:         cfg,
+		currentView:    VIEW_LIST,
+		width:          80,
+		height:         24,
+		table:          t,
+		formInputs:     inputs,
+		dashBeginInput: beginInput,
+		dashEndInput:   endInput,
 	}
 	m.rebuildTable()
 
@@ -241,6 +268,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.message = ""
 				return m, nil
 			}
+		case "d":
+			if m.currentView == VIEW_LIST || m.currentView == VIEW_HELP || m.currentView == VIEW_REPORT {
+				return m.enterDashboard()
+			}
 		case "?", "h":
 			if m.currentView == VIEW_LIST || m.currentView == VIEW_REPORT {
 				m.currentView = VIEW_HELP
@@ -248,6 +279,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "esc":
+			// In dashboard custom mode, esc cancels custom mode first
+			if m.currentView == VIEW_DASHBOARD && m.dashCustomMode {
+				m.dashCustomMode = false
+				m.dashBeginInput.Blur()
+				m.dashEndInput.Blur()
+				m.message = ""
+				return m, nil
+			}
 			if m.currentView != VIEW_LIST {
 				m.currentView = VIEW_LIST
 				m.message = ""
@@ -263,6 +302,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateAdd(msg)
 		case VIEW_REPORT:
 			return m.updateReport(msg)
+		case VIEW_DASHBOARD:
+			return m.updateDashboard(msg)
 		case VIEW_HELP:
 			return m, nil
 		}
@@ -333,10 +374,11 @@ func (m Model) View() string {
 
 	// ── Header bar ────────────────────────────────────────────────────────
 	viewName := map[ViewMode]string{
-		VIEW_LIST:   "Transactions",
-		VIEW_ADD:    "Add Transaction",
-		VIEW_REPORT: "Balance Report",
-		VIEW_HELP:   "Help",
+		VIEW_LIST:      "Transactions",
+		VIEW_ADD:       "Add Transaction",
+		VIEW_REPORT:    "Balance Report",
+		VIEW_DASHBOARD: "Dashboard",
+		VIEW_HELP:      "Help",
 	}[m.currentView]
 
 	headerText := fmt.Sprintf(" DoubleBook  ·  %s ", viewName)
@@ -363,6 +405,8 @@ func (m Model) View() string {
 		b.WriteString(m.viewAdd())
 	case VIEW_REPORT:
 		b.WriteString(m.viewReport())
+	case VIEW_DASHBOARD:
+		b.WriteString(m.viewDashboard())
 	case VIEW_HELP:
 		b.WriteString(m.viewHelp())
 	}
@@ -388,7 +432,7 @@ func (m Model) viewList() string {
 
 	// Footer.
 	b.WriteString(styleFooter.Render(
-		"  [↑↓] scroll  [a] add  [r] report  [?] help  [q] quit",
+		"  [↑↓] scroll  [a] add  [r] report  [d] dashboard  [?] help  [q] quit",
 	))
 
 	return b.String()
@@ -549,9 +593,18 @@ func (m Model) viewHelp() string {
 			{"↑ / ↓ / j / k", "Move up/down in the transaction list"},
 			{"a", "Open the add-transaction form"},
 			{"r", "Open the balance report"},
+			{"d", "Open the dashboard"},
 			{"? / h", "Show this help screen"},
 			{"esc", "Go back to the transaction list"},
 			{"q / ctrl+c", "Save and quit"},
+		}},
+		{"Dashboard", []entry{
+			{"← / →", "Decrease / increase time period"},
+			{"1 / 3 / 6 / y", "Quick select 1M / 3M / 6M / 1Y"},
+			{"c", "Enter custom date range mode"},
+			{"tab", "Switch between date fields (in custom mode)"},
+			{"enter", "Apply custom date range"},
+			{"esc", "Cancel custom mode / return to list"},
 		}},
 		{"Add Transaction Form", []entry{
 			{"tab / ↓", "Move to the next field"},
@@ -713,4 +766,360 @@ func (m *Model) submitTransaction() error {
 		return err
 	}
 	return m.interpreter.SaveToFile(m.config.DataFile)
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard helpers
+// ---------------------------------------------------------------------------
+
+// enterDashboard switches to the dashboard view and computes data.
+func (m Model) enterDashboard() (tea.Model, tea.Cmd) {
+	m.currentView = VIEW_DASHBOARD
+	m.message = ""
+	m.dashMonths = 6
+	m.dashFocus = 0
+	m.dashCustomMode = false
+	m.dashBeginInput.Blur()
+	m.dashEndInput.Blur()
+	m.refreshDashboard()
+	return m, nil
+}
+
+// refreshDashboard recomputes dashboard data based on current settings.
+func (m *Model) refreshDashboard() {
+	var beginDate, endDate string
+
+	if m.dashMonths == 0 {
+		// Custom date range — use stored values
+		beginDate = m.dashBeginDate
+		endDate = m.dashEndDate
+	} else {
+		// Preset range
+		endDate = time.Now().Format("2006-01-02")
+		beginDate = time.Now().AddDate(0, -m.dashMonths, 0).Format("2006-01-02")
+		m.dashBeginDate = beginDate
+		m.dashEndDate = endDate
+	}
+
+	filter := interpreter.Filter{
+		BeginDate: beginDate,
+		EndDate:   endDate,
+	}
+	txns := m.interpreter.FilteredTransactions(filter)
+	m.dashData = dashboard.ComputeDashboard(txns, beginDate, endDate)
+}
+
+// updateDashboard handles keyboard input for the dashboard view.
+func (m Model) updateDashboard(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	key := msg.String()
+
+	// Custom date mode input handling
+	if m.dashCustomMode {
+		switch key {
+		case "tab":
+			// Switch focus between begin and end inputs
+			if m.dashFocus == 1 {
+				m.dashFocus = 2
+				m.dashBeginInput.Blur()
+				return m, m.dashEndInput.Focus()
+			} else {
+				m.dashFocus = 1
+				m.dashEndInput.Blur()
+				return m, m.dashBeginInput.Focus()
+			}
+
+		case "shift+tab":
+			// Switch focus in reverse
+			if m.dashFocus == 2 {
+				m.dashFocus = 1
+				m.dashEndInput.Blur()
+				return m, m.dashBeginInput.Focus()
+			} else {
+				m.dashFocus = 2
+				m.dashBeginInput.Blur()
+				return m, m.dashEndInput.Focus()
+			}
+
+		case "enter":
+			// Validate and apply custom dates
+			beginStr := m.dashBeginInput.Value()
+			endStr := m.dashEndInput.Value()
+
+			_, errBegin := time.Parse("2006-01-02", beginStr)
+			_, errEnd := time.Parse("2006-01-02", endStr)
+
+			if errBegin != nil {
+				m.message = "Invalid start date — use YYYY-MM-DD"
+				m.messageErr = true
+				return m, nil
+			}
+			if errEnd != nil {
+				m.message = "Invalid end date — use YYYY-MM-DD"
+				m.messageErr = true
+				return m, nil
+			}
+
+			// Apply custom range
+			m.dashMonths = 0 // 0 = custom range
+			m.dashBeginDate = beginStr
+			m.dashEndDate = endStr
+			m.dashCustomMode = false
+			m.dashBeginInput.Blur()
+			m.dashEndInput.Blur()
+			m.message = ""
+			m.refreshDashboard()
+			return m, nil
+		}
+
+		// Forward key to focused input
+		var cmd tea.Cmd
+		if m.dashFocus == 1 {
+			m.dashBeginInput, cmd = m.dashBeginInput.Update(msg)
+		} else {
+			m.dashEndInput, cmd = m.dashEndInput.Update(msg)
+		}
+		return m, cmd
+	}
+
+	// Normal dashboard navigation
+	switch key {
+	case "c":
+		// Enter custom date mode
+		m.dashCustomMode = true
+		m.dashFocus = 1
+		m.dashBeginInput.SetValue(m.dashBeginDate)
+		m.dashEndInput.SetValue(m.dashEndDate)
+		return m, m.dashBeginInput.Focus()
+
+	case "left", "h":
+		if m.dashMonths > 1 {
+			m.dashMonths--
+			m.refreshDashboard()
+		} else if m.dashMonths == 0 {
+			// Switch from custom to preset
+			m.dashMonths = 1
+			m.refreshDashboard()
+		}
+		return m, nil
+
+	case "right", "l":
+		if m.dashMonths > 0 && m.dashMonths < 24 {
+			m.dashMonths++
+			m.refreshDashboard()
+		}
+		return m, nil
+
+	case "1":
+		m.dashMonths = 1
+		m.refreshDashboard()
+		return m, nil
+
+	case "3":
+		m.dashMonths = 3
+		m.refreshDashboard()
+		return m, nil
+
+	case "6":
+		m.dashMonths = 6
+		m.refreshDashboard()
+		return m, nil
+
+	case "y":
+		m.dashMonths = 12
+		m.refreshDashboard()
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// viewDashboard renders the dashboard view.
+func (m Model) viewDashboard() string {
+	var b strings.Builder
+	sep := styleSep.Render(strings.Repeat("─", m.width))
+
+	if m.dashData == nil {
+		b.WriteString("\n  Loading dashboard...\n")
+		return b.String()
+	}
+
+	// Period selector
+	b.WriteString(sep)
+	b.WriteString("\n")
+	periodStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("75")).Bold(true)
+	customStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
+	periods := []struct {
+		months int
+		label  string
+	}{
+		{1, "1M"},
+		{3, "3M"},
+		{6, "6M"},
+		{12, "1Y"},
+	}
+
+	if m.dashCustomMode {
+		// Show date input fields
+		b.WriteString("  Custom range: ")
+		b.WriteString(m.dashBeginInput.View())
+		b.WriteString("  ")
+		b.WriteString(m.dashEndInput.View())
+		b.WriteString("  ")
+		b.WriteString(styleLabel.Render("[tab] switch  [enter] apply  [esc] cancel"))
+		b.WriteString("\n\n")
+	} else {
+		b.WriteString("  Period: ")
+		for _, p := range periods {
+			label := p.label
+			if m.dashMonths == p.months {
+				label = "[" + label + "]"
+				b.WriteString(periodStyle.Render(label))
+			} else {
+				b.WriteString(styleLabel.Render(label))
+			}
+			b.WriteString("  ")
+		}
+		// Show custom as selected when dashMonths is 0
+		if m.dashMonths == 0 {
+			b.WriteString(customStyle.Render("[Custom]"))
+		} else {
+			b.WriteString(styleLabel.Render("Custom"))
+		}
+		b.WriteString("  ")
+		b.WriteString(styleLabel.Render(fmt.Sprintf("(%s to %s)", m.dashBeginDate, m.dashEndDate)))
+		b.WriteString("\n\n")
+	}
+
+	// Summary cards
+	b.WriteString(styleTitle.Render("  SUMMARY"))
+	b.WriteString("\n")
+	s := m.dashData.Summary
+	b.WriteString(fmt.Sprintf("  %-12s %s\n",
+		styleLabel.Render("Income:"),
+		stylePositive.Render(dashboard.FormatAmount(s.TotalIncome, "$"))))
+	b.WriteString(fmt.Sprintf("  %-12s %s\n",
+		styleLabel.Render("Expenses:"),
+		styleNegative.Render(dashboard.FormatAmount(s.TotalExpenses, "$"))))
+
+	netStyle := stylePositive
+	if s.NetIncome < 0 {
+		netStyle = styleNegative
+	}
+	b.WriteString(fmt.Sprintf("  %-12s %s\n",
+		styleLabel.Render("Net:"),
+		netStyle.Render(dashboard.FormatAmount(s.NetIncome, "$"))))
+
+	savingsStyle := stylePositive
+	if s.SavingsRate < 0 {
+		savingsStyle = styleNegative
+	}
+	b.WriteString(fmt.Sprintf("  %-12s %s\n",
+		styleLabel.Render("Savings:"),
+		savingsStyle.Render(fmt.Sprintf("%.1f%%", s.SavingsRate))))
+	b.WriteString("\n")
+
+	// Monthly breakdown
+	b.WriteString(styleTitle.Render("  MONTHLY BREAKDOWN"))
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("  %-7s  %12s  %12s  %12s\n", "Month", "Income", "Expenses", "Gain"))
+	b.WriteString(styleSep.Render("  " + strings.Repeat("─", 50)))
+	b.WriteString("\n")
+
+	maxGain := 0.0
+	for _, md := range m.dashData.Monthly {
+		if md.Gain > maxGain {
+			maxGain = md.Gain
+		}
+		if -md.Gain > maxGain {
+			maxGain = -md.Gain
+		}
+	}
+
+	for _, md := range m.dashData.Monthly {
+		incomeStr := dashboard.FormatAmount(md.Income, "$")
+		expenseStr := dashboard.FormatAmount(md.Expenses, "$")
+		gainStr := dashboard.FormatAmount(md.Gain, "$")
+
+		gainStyle := stylePositive
+		if md.Gain < 0 {
+			gainStyle = styleNegative
+		}
+
+		// Mini bar
+		barWidth := 12
+		bar := ""
+		if maxGain > 0 {
+			barLen := int((md.Gain / maxGain) * float64(barWidth))
+			if barLen < 0 {
+				barLen = -barLen
+			}
+			if barLen > barWidth {
+				barLen = barWidth
+			}
+			if barLen < 1 && md.Gain != 0 {
+				barLen = 1
+			}
+			if md.Gain >= 0 {
+				bar = stylePositive.Render(strings.Repeat("█", barLen))
+			} else {
+				bar = styleNegative.Render(strings.Repeat("█", barLen))
+			}
+		}
+
+		b.WriteString(fmt.Sprintf("  %-7s  %s  %s  %s  %s\n",
+			md.Label,
+			stylePositive.Render(fmt.Sprintf("%12s", incomeStr)),
+			styleNegative.Render(fmt.Sprintf("%12s", expenseStr)),
+			gainStyle.Render(fmt.Sprintf("%12s", gainStr)),
+			bar))
+	}
+	b.WriteString("\n")
+
+	// Top expenses
+	b.WriteString(styleTitle.Render("  TOP EXPENSES"))
+	b.WriteString("\n")
+	maxExpense := 0.0
+	for _, c := range m.dashData.TopExpenses {
+		if c.Amount > maxExpense {
+			maxExpense = c.Amount
+		}
+	}
+	for _, c := range m.dashData.TopExpenses {
+		barLen := 0
+		if maxExpense > 0 {
+			barLen = int((c.Amount / maxExpense) * 20)
+		}
+		if barLen < 1 {
+			barLen = 1
+		}
+		bar := styleNegative.Render(strings.Repeat("█", barLen))
+		b.WriteString(fmt.Sprintf("  %-15s %s %s\n",
+			styleLabel.Render(truncateStr(c.Category, 15)),
+			bar,
+			styleValue.Render(dashboard.FormatAmount(c.Amount, "$"))))
+	}
+	b.WriteString("\n")
+
+	// Footer
+	b.WriteString(sep)
+	b.WriteString("\n")
+	if m.dashCustomMode {
+		b.WriteString(styleFooter.Render(
+			"  [tab] switch field  [enter] apply  [esc] cancel",
+		))
+	} else {
+		b.WriteString(styleFooter.Render(
+			"  [←→] change period  [1/3/6/y] quick select  [c] custom range  [esc] back  [q] quit",
+		))
+	}
+
+	return b.String()
+}
+
+// truncateStr truncates a string to maxLen characters.
+func truncateStr(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-1] + "…"
 }

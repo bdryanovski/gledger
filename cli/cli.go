@@ -43,6 +43,8 @@ func Run(args []string) error {
 		return commands.WebCommand(ctx, cmdArgs)
 	case "fql", "query":
 		return commands.FQLCommand(ctx, cmdArgs)
+	case "dashboard", "dash":
+		return commands.DashboardCommand(ctx, cmdArgs)
 	case "import":
 		return commands.ImportCommand(ctx, cmdArgs)
 	case "insert":
@@ -50,6 +52,8 @@ func Run(args []string) error {
 	case "add":
 		// 'add' also uses the interactive insert form.
 		return commands.InsertCommand(ctx, cmdArgs)
+	case "reset":
+		return commands.ResetCommand(ctx, cmdArgs)
 	case "help", "-h", "--help":
 		return runHelp(cmdArgs)
 	case "version", "-v", "--version":
@@ -77,9 +81,11 @@ Commands:
   register, reg, r       Show a transaction register with running total
   list, ls               Alias for register
   is, income-statement   Show income statement (revenues vs expenses)
+  dashboard, dash        Show financial dashboard with charts and trends
   fql, query             Financial Query Language (REPL or --query "...")
   insert, add            Interactive form to add a new transaction
   import                 Import transactions from a CSV file
+  reset                  Delete all journal data (with confirmation)
   help                   Show this help message
   version                Show version information
 
@@ -92,6 +98,9 @@ Examples:
   doublebook --begin 2025-01-01 --end 2025-01-31 register
   doublebook add --date 2025-01-15 --description "Coffee" --amount 5.00 \
                  --from assets:checking --to expenses:dining
+  doublebook reset                    # asks for confirmation
+  doublebook reset --force            # skip confirmation
+  doublebook reset --dry-run          # show what would be deleted
 
 Journal files:
   DoubleBook looks for <journal>.journal, <journal>.1.journal, etc.
